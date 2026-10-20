@@ -18,6 +18,16 @@ if [ "$ready" != "1" ]; then
   exit 1
 fi
 
+echo "Checking all Compose services remain running"
+services=$(docker compose ps --status running --services)
+for service in web worker beat db redis; do
+  if ! echo "$services" | grep -qx "$service"; then
+    echo "Expected running service unavailable: $service" >&2
+    docker compose ps >&2
+    exit 1
+  fi
+done
+
 echo "Checking rendered dashboard and bundled asset"
 curl --fail --silent --show-error http://127.0.0.1:8000/ > /tmp/triagedock-dashboard.html
 grep -q "TriageDock | Incident response console" /tmp/triagedock-dashboard.html

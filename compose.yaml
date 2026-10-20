@@ -72,7 +72,7 @@ services:
 
   beat:
     <<: *app-base
-    command: ["celery", "-A", "config", "beat", "--loglevel=INFO"]
+    command: ["celery", "-A", "config", "beat", "--loglevel=INFO", "--schedule=/tmp/triagedock-celerybeat-schedule"]
     depends_on:
       migrate:
         condition: service_completed_successfully
