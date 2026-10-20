@@ -1,15 +1,15 @@
 FROM node:22-alpine AS frontend-build
 WORKDIR /frontend
-COPY frontend/package.json ./
-RUN npm install --no-audit --no-fund
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --no-audit --no-fund
 COPY frontend/ ./
 RUN npm run build
 
 FROM python:3.13-slim AS app
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
-COPY backend/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt && groupadd -r app && useradd -r -g app app
+COPY backend/requirements.lock ./
+RUN pip install --no-cache-dir -r requirements.lock && groupadd -r app && useradd -r -g app app
 COPY backend/ ./
 COPY --from=frontend-build /frontend/dist/index.html /app/templates/ui/index.html
 COPY --from=frontend-build /frontend/dist/assets/ /app/static/ui/assets/
