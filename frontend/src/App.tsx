@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import {
   Activity, AlertCircle, ArrowDownRight, ArrowUpRight, BellRing,
   Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3,
@@ -60,7 +60,7 @@ function Login({ onSuccess }: { onSuccess: (session: Session) => void }) {
   );
 }
 
-function StatCard({ title, value, subtitle, tone, icon }: { title: string; value: number; subtitle: string; tone: string; icon: React.ReactNode }) {
+function StatCard({ title, value, subtitle, tone, icon }: { title: string; value: number; subtitle: string; tone: string; icon: ReactNode }) {
   return <div className="stat-card">
     <div className="stat-head"><span>{title}</span><span className={`stat-icon ${tone}`}>{icon}</span></div>
     <div className="stat-value">{value.toLocaleString()}</div>
