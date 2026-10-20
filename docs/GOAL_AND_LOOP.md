@@ -34,7 +34,7 @@ Inspect current candidate → identify the **first failing completion gate** →
 | Packaging | Production Docker image build and live Compose HTTP smoke |
 | Behavior | Alert 201 → same alert 200; status transitions; session access; CSRF |
 | Reliability | Outbox success and retry exhaustion tests |
-| Security | No committed secrets, authenticated operator API, protected intake key, no exposed database port |
+| Security | No committed secrets, authenticated operator API, protected intake key, no exposed database port, dependency vulnerability audit |
 | Documentation | Runnable quick start, accurate API contract, limits, and failure behavior |
 | Safety | Writes exclusively inside this repository; no external file/profile/system modifications |
 

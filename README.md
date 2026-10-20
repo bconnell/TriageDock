@@ -41,11 +41,11 @@ Set `NOTIFICATION_WEBHOOK_URL` to an HTTPS endpoint you control and restart the 
 
 ## Local developer workflow
 
-- Backend: use Python 3.13 and install `backend/requirements-dev.txt`. In your shell, set `DJANGO_DEBUG=1` and `DATABASE_ENGINE=sqlite` (on Windows PowerShell use `$env:DJANGO_DEBUG = '1'` and `$env:DATABASE_ENGINE = 'sqlite'`). From `backend/`, run `python manage.py migrate`, `python manage.py createsuperuser`, then `python manage.py runserver 127.0.0.1:8000`. SQLite is suitable for local development, but does not verify PostgreSQL concurrency behavior.
-- Frontend: from `frontend/`, run `npm install` and `npm run dev`. Vite proxies `/api` to the Django server. Open **http://127.0.0.1:5173**.
+- Backend: use Python 3.13 and install `backend/requirements-dev.lock`. In your shell, set `DJANGO_DEBUG=1` and `DATABASE_ENGINE=sqlite` (on Windows PowerShell use `$env:DJANGO_DEBUG = '1'` and `$env:DATABASE_ENGINE = 'sqlite'`). From `backend/`, run `python manage.py migrate`, `python manage.py createsuperuser`, then `python manage.py runserver 127.0.0.1:8000`. SQLite is suitable for local development, but does not verify PostgreSQL concurrency behavior.
+- Frontend: from `frontend/`, run `npm ci` and `npm run dev`. Vite proxies `/api` to the Django server. Open **http://127.0.0.1:5173**.
 - Backend checks: `python manage.py check`, `python manage.py makemigrations --check --dry-run`, `python manage.py test incidents`.
 - Frontend checks: `npm run typecheck`, `npm test`, `npm run build`.
-- CI uses actual PostgreSQL for backend integration tests, builds the Docker image, and boots the real Docker Compose stack for an HTTP smoke test.
+- CI runs PostgreSQL-backed Django tests, TypeScript tests and compilation, dependency vulnerability audits, a production Docker build, and a live Compose HTTP smoke test. Python and npm dependency versions are recorded in committed lockfiles.
 
 ## Architecture
 
@@ -67,6 +67,9 @@ Authentication and CSRF are provided by Django. No public account registration e
 
 - [API endpoints and authentication](docs/API.md)
 - [Development scope and verification](docs/GOAL_AND_LOOP.md)
+- [Release acceptance and GitHub settings](docs/RELEASE.md)
+- [Security policy](SECURITY.md)
+- [Contributing](CONTRIBUTING.md)
 
 Framework references: [Django authentication](https://docs.djangoproject.com/en/stable/topics/auth/default/), [Django REST Framework authentication](https://www.django-rest-framework.org/api-guide/authentication/), [Celery tasks](https://docs.celeryq.dev/en/stable/userguide/tasks.html), and [Docker Compose](https://docs.docker.com/compose/).
 
