@@ -31,7 +31,7 @@ jobs:
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,testserver
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - run: python scripts/check_public_copy.py
@@ -108,7 +108,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - name: Audit locked frontend production dependencies
