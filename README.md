@@ -74,7 +74,7 @@ Framework references: [Django authentication](https://docs.djangoproject.com/en/
 
 - The default deployment is **local-only**. A public deployment needs managed TLS termination, secure cookies (`SECURE_COOKIES=1`), suitable `ALLOWED_HOSTS` and trusted origins, network edge rate limiting, secret management, monitoring, backups, and restore exercises.
 - Every authenticated Django user can access the operator API. There are no operator roles, per-incident permissions, tenant separation, SSO, escalation policies, SMS, or email paging.
-- Notification delivery is at-least-once, not exactly-once. The dispatcher is intentionally bounded to 50 due rows per run. It is not a high-throughput enterprise notification service.
+- Notification delivery is best effort, with up to three attempts per event. An event can be delivered more than once, and a successful delivery is not guaranteed. The dispatcher processes at most 50 due rows per run; it is not designed for high-volume paging.
 - The frontend polls every 30 seconds; no WebSocket or instant push is claimed.
 - A small liveness endpoint does not prove database or queue readiness.
 - No credentials, customer data, or real alert endpoints should be committed to this repository.

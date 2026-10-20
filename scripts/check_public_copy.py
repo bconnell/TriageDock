@@ -28,6 +28,7 @@ def main() -> None:
         "built for operational clarity",
         "successfully closed",
         "bounded engineering portfolio project",
+        "notification delivery is at-least-once",
     )
     for phrase in misleading:
         for text in snippets:
@@ -38,6 +39,7 @@ def main() -> None:
     assert "30 SECOND REFRESH" in dashboard
     assert "every 30 seconds" in dashboard
     assert "every 30 seconds" in readme
+    assert "a successful delivery is not guaranteed" in readme.lower()
     assert 'request.headers.get("X-TriageDock-Key"' in api
     assert "not a cryptographic payload signature" in contract
     assert "not cryptographically signed" in plan
