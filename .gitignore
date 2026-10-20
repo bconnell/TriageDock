@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.env
+.env.*
+!.env.example
+*.sqlite3
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+dist/
+coverage/
+
+# Local configuration
+.DS_Store
+.vscode/
+.idea/
+staticfiles/
+backend/templates/ui/index.html
+backend/static/ui/
+
+# Keep committed fixtures and migrations
