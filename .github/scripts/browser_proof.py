@@ -47,7 +47,7 @@ def main():
         driver.find_element(By.ID, "password").send_keys("demo-ci-password-2026")
         driver.find_element(By.CSS_SELECTOR, "button.login-submit").click()
         wait.until(EC.text_to_be_present_in_element((By.TAG_NAME, "h1"), "Incident dashboard"))
-        wait.until(lambda d: len(d.find_elements(By.CSS_SELECTOR, "tbody tr")) >= 4)
+        wait.until(lambda d: len(d.find_elements(By.CSS_SELECTOR, "tbody tr")) == 4)
         assert "Elevated gateway latency" in driver.page_source
         assert "Replication lag detected" in driver.page_source
         assert "Cache hit ratio below target" in driver.page_source
