@@ -1,0 +1,14 @@
+**/.git
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.venv
+**/node_modules
+**/dist
+**/coverage
+**/.env
+**/.env.*
+**/*.sqlite3
+**/staticfiles
+**/templates/ui/index.html
+**/static/ui

@@ -1,0 +1,61 @@
+name: CI
+on:
+  push:
+    branches: [main, "work/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: triagedock
+          POSTGRES_PASSWORD: ci-password
+          POSTGRES_DB: triagedock
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U triagedock -d triagedock"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DJANGO_SECRET_KEY: ci-only-secret-not-for-production
+      INGEST_API_KEY: ci-only-ingest-key
+      POSTGRES_DB: triagedock
+      POSTGRES_USER: triagedock
+      POSTGRES_PASSWORD: ci-password
+      POSTGRES_HOST: localhost
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,testserver
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install -r backend/requirements-dev.txt
+      - working-directory: backend
+        run: |
+          python manage.py check
+          python manage.py makemigrations --check --dry-run
+          python manage.py migrate --noinput
+          python manage.py test incidents --verbosity 2
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - working-directory: frontend
+        run: |
+          npm install --no-audit --no-fund
+          npm run typecheck
+          npm test
+          npm run build
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f backend/Dockerfile -t triagedock:ci .
