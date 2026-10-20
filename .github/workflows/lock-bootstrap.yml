@@ -25,10 +25,10 @@ jobs:
       - name: Transfer deterministic lock snapshots for reviewed commit
         run: |
           python - <<'PY'
-          import base64, gzip
+          import base64
           from pathlib import Path
           for name, path in [('npm','frontend/package-lock.json'),('python','backend/requirements.lock'),('python_dev','backend/requirements-dev.lock')]:
-              payload=base64.b64encode(gzip.compress(Path(path).read_bytes(), mtime=0)).decode()
+              payload=base64.b64encode(Path(path).read_bytes()).decode()
               for i in range(0,len(payload),3500):
                   print('LOCKPART_%s_%03d=%s' % (name,i//3500,payload[i:i+3500]))
               print('LOCKEND_%s_%d' % (name, len(Path(path).read_bytes())))
