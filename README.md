@@ -41,7 +41,7 @@ Set `NOTIFICATION_WEBHOOK_URL` to an HTTPS receiver you control and restart the 
 - Frontend: from `frontend/`, run `npm install` and `npm run dev`. Vite proxies `/api` to the Django server. Open **http://127.0.0.1:5173**.
 - Backend checks: `python manage.py check`, `python manage.py makemigrations --check --dry-run`, `python manage.py test incidents`.
 - Frontend checks: `npm run typecheck`, `npm test`, `npm run build`.
-- CI uses actual PostgreSQL for backend integration tests and independently builds the Docker image.
+- CI uses actual PostgreSQL for backend integration tests, builds the Docker image, and boots the real Docker Compose stack for an HTTP smoke test.
 
 ## Architecture
 

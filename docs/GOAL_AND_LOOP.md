@@ -31,14 +31,14 @@ Inspect current candidate → identify the **first failing completion gate** →
 | --- | --- |
 | Backend | Django check, migration drift check, PostgreSQL integration tests |
 | Frontend | TypeScript typecheck, UI unit tests, production build |
-| Packaging | Production Docker image build |
+| Packaging | Production Docker image build and live Compose HTTP smoke |
 | Behavior | Alert 201 → same alert 200; status transitions; session access; CSRF |
 | Reliability | Outbox success and retry exhaustion tests |
 | Security | No committed secrets, authenticated operator API, protected intake key, no exposed database port |
 | Documentation | Runnable quick start, API contract, limits, failure recovery |
 | Safety | Writes exclusively inside this repository; no external file/profile/system modifications |
 
-A successful CI run plus manual Compose walkthrough is release-ready evidence. A passing CI without manual Compose verification is *not* a verified end-to-end release.
+A successful CI proves build, tests and a **containerized smoke flow**. A manually conducted interactive operator walkthrough is still separate evidence and must not be claimed until performed.
 
 ## Explicit safety constraints
 

@@ -59,3 +59,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -f backend/Dockerfile -t triagedock:ci .
+      - name: Boot Compose and verify real HTTP / PostgreSQL integration
+        env:
+          DJANGO_SECRET_KEY: ci-ephemeral-smoke-secret
+          INGEST_API_KEY: ci-ephemeral-smoke-intake
+          POSTGRES_PASSWORD: ci-ephemeral-smoke-postgres
+        run: bash .github/scripts/smoke.sh
+      - name: Print Compose logs if smoke fails
+        if: failure()
+        env:
+          DJANGO_SECRET_KEY: ci-ephemeral-smoke-secret
+          INGEST_API_KEY: ci-ephemeral-smoke-intake
+          POSTGRES_PASSWORD: ci-ephemeral-smoke-postgres
+        run: docker compose logs --tail=100
+      - name: Stop Compose services
+        if: always()
+        env:
+          DJANGO_SECRET_KEY: ci-ephemeral-smoke-secret
+          INGEST_API_KEY: ci-ephemeral-smoke-intake
+          POSTGRES_PASSWORD: ci-ephemeral-smoke-postgres
+        run: docker compose down
