@@ -1,10 +1,12 @@
 # TriageDock
 
-**Incident intake, triage and notification workflow.**
+**Receive monitoring alerts, track incidents, and record operator actions.**
 
-TriageDock is a small operational console built with **Python 3.13, Django 6.1, Django REST Framework, PostgreSQL, Redis, Celery, React 19 and TypeScript**. It is a bounded engineering portfolio project, not a claim of production-scale incident paging.
+TriageDock accepts alerts from monitoring tools and groups repeated reports under the same incident. Operators can review the incident history, acknowledge incidents, and mark them resolved in a browser. An optional worker sends notifications to a configured HTTPS webhook.
 
-Operator features: secure session login, current incident feed, status and severity filters, search, detail history, acknowledgement, resolution, counts, live polling, and notification delivery status. Monitoring tools send alerts to a protected API; repeated alerts are deduplicated and resolved alerts reopen.
+The stack is **Python 3.13, Django 6.1, Django REST Framework, PostgreSQL, Redis, Celery, React 19, and TypeScript**.
+
+The browser uses Django session authentication. The incident list supports search and filters by status and severity, with updates requested every 30 seconds while the page is open. An alert with the same `source` and `external_key` increments the existing incident's occurrence count. A new report for a resolved incident reopens it.
 
 ## Quick start (Docker Compose)
 
@@ -18,7 +20,7 @@ Requires Docker Engine + Compose plugin.
 
 The app listens on **127.0.0.1:8000**, not a public interface. The DB and Redis have no published ports. Stop with `docker compose down` (the database named volume is preserved). **Do not use `docker compose down -v`** unless intentionally removing this project's data.
 
-### Send a real alert
+### Send a test alert
 
 Using a shell with `INGEST_API_KEY` set to the same value as your private `.env`:
 
@@ -29,15 +31,17 @@ curl -X POST http://localhost:8000/api/v1/alerts/ \
   --data '{"source":"checkout-api","external_key":"http-5xx","title":"Elevated error rate","description":"5xx errors above threshold","severity":"critical"}'
 ```
 
-Post the same JSON again to observe an increased occurrence count. Resolve it in the dashboard and post again to observe reopening. On Windows PowerShell, use `curl.exe` and set the key in `$env:INGEST_API_KEY`; substitute `$env:INGEST_API_KEY` in the command.
+Send the same alert again to increment the occurrence count. Mark the incident resolved in the dashboard, then send it again to see it reopen. The key authenticates the sending client; it is **not** a cryptographic signature of the alert body.
+
+On Windows PowerShell, set `$env:INGEST_API_KEY` to the same value stored in your local `.env` file. Use `curl.exe` rather than the PowerShell `curl` alias and replace `$INGEST_API_KEY` in the example above with `$env:INGEST_API_KEY`.
 
 ### Optional HTTPS notification delivery
 
-Set `NOTIFICATION_WEBHOOK_URL` to an HTTPS receiver you control and restart the Compose services. Each **new or reopened** alert creates a durable outbox entry. Celery beat scans pending work every 15 seconds, and workers attempt a bounded HTTPS POST with a 5 second timeout, 30/60 second backoff, and a three-attempt limit. Failed deliveries stay visible and are not silently reported as successful. Leave the URL empty to disable outbound notifications.
+Set `NOTIFICATION_WEBHOOK_URL` to an HTTPS endpoint you control and restart the Compose services. A newly created or reopened incident adds a notification record to PostgreSQL. Celery beat checks for pending deliveries every 15 seconds. The worker attempts an HTTP POST with a five second timeout and retries after 30 and 60 seconds, up to three attempts. The incident detail view shows delivery attempts and failures. Leave the URL empty to disable notifications. Delivery is not guaranteed; receivers must deduplicate repeated requests using `event_id`.
 
 ## Local developer workflow
 
-- Backend: Python 3.13, `pip install -r backend/requirements-dev.txt`. Set `DJANGO_DEBUG=1 DATABASE_ENGINE=sqlite` for local unit development, then from `backend/` run `python manage.py migrate`, `python manage.py createsuperuser`, and `python manage.py runserver 127.0.0.1:8000`. SQLite is a development convenience, **not** proof of PostgreSQL concurrency behavior.
+- Backend: use Python 3.13 and install `backend/requirements-dev.txt`. In your shell, set `DJANGO_DEBUG=1` and `DATABASE_ENGINE=sqlite` (on Windows PowerShell use `$env:DJANGO_DEBUG = '1'` and `$env:DATABASE_ENGINE = 'sqlite'`). From `backend/`, run `python manage.py migrate`, `python manage.py createsuperuser`, then `python manage.py runserver 127.0.0.1:8000`. SQLite is suitable for local development, but does not verify PostgreSQL concurrency behavior.
 - Frontend: from `frontend/`, run `npm install` and `npm run dev`. Vite proxies `/api` to the Django server. Open **http://127.0.0.1:5173**.
 - Backend checks: `python manage.py check`, `python manage.py makemigrations --check --dry-run`, `python manage.py test incidents`.
 - Frontend checks: `npm run typecheck`, `npm test`, `npm run build`.
@@ -59,16 +63,18 @@ External monitor -- X-TriageDock-Key --> Django REST intake
 
 Authentication and CSRF are provided by Django. No public account registration exists; operators are created intentionally through Django's management command. Notification receivers must deduplicate `event_id`. External HTTP delivery cannot offer exactly-once semantics.
 
-## Docs
+## Documentation
 
-- [API reference](docs/API.md)
-- [Completion goal, vertical slices, horizontal foundations and release gates](docs/GOAL_AND_LOOP.md)
+- [API endpoints and authentication](docs/API.md)
+- [Development scope and verification](docs/GOAL_AND_LOOP.md)
+
+Framework references: [Django authentication](https://docs.djangoproject.com/en/stable/topics/auth/default/), [Django REST Framework authentication](https://www.django-rest-framework.org/api-guide/authentication/), [Celery tasks](https://docs.celeryq.dev/en/stable/userguide/tasks.html), and [Docker Compose](https://docs.docker.com/compose/).
 
 ## Scope and limitations
 
 - The default deployment is **local-only**. A public deployment needs managed TLS termination, secure cookies (`SECURE_COOKIES=1`), suitable `ALLOWED_HOSTS` and trusted origins, network edge rate limiting, secret management, monitoring, backups, and restore exercises.
-- Operator permissions are a single authenticated role; there is no tenant isolation, SSO, escalation policy, SMS, or email paging.
-- Notification delivery is at-least-once, not exactly-once. The dispatcher is intentionally bounded to 50 due rows per run. It is not a high-throughput enterprise notification service.
+- Every authenticated Django user can access the operator API. There are no operator roles, per-incident permissions, tenant separation, SSO, escalation policies, SMS, or email paging.
+- Notification delivery is best effort, with up to three attempts per event. An event can be delivered more than once, and a successful delivery is not guaranteed. The dispatcher processes at most 50 due rows per run; it is not designed for high-volume paging.
 - The frontend polls every 30 seconds; no WebSocket or instant push is claimed.
 - A small liveness endpoint does not prove database or queue readiness.
 - No credentials, customer data, or real alert endpoints should be committed to this repository.

@@ -1,6 +1,6 @@
 # API contract (v1)
 
-All operator routes are cookie-session authenticated and require CSRF on mutations.
+Incident listing, details, counts, and status changes require an authenticated Django session. Login and logout use the browser session flow; POST requests using that session require a valid CSRF token. The session status route can be called before login. Alert intake uses an independent `X-TriageDock-Key` header and does not require a Django session.
 
 | Method | Route | Purpose |
 | --- | --- | --- |
@@ -26,7 +26,7 @@ Webhook body:
 }
 ```
 
-`source` (80 chars), `external_key` (160), `title` (200), `severity` (low/medium/high/critical) required. `description` optional, max 4000. Identity is SHA256 of length-prefixed source and external key. These strings are case-sensitive; callers must keep them stable. Identical identities yield HTTP 200 and increment occurrences. First occurrence yields 201. Repeating resolved identities reopens them. Missing/wrong intake key yields 401. Invalid payloads yield 400. No incoming webhooks require a user session, but never expose the endpoint without TLS, authentication and edge rate limiting.
+`source` (80 chars), `external_key` (160), `title` (200), `severity` (low/medium/high/critical) required. `description` optional, max 4000. Identity is SHA256 of length-prefixed source and external key. These strings are case-sensitive; callers must keep them stable. Further alerts with the same identity return HTTP 200 and increment occurrences, even when their titles, severities, or descriptions change. The first alert for a new identity returns HTTP 201. Repeating resolved identities reopens them. Missing/wrong intake key yields 401. Invalid payloads yield 400. Alert intake authenticates callers with an API key, not a cryptographic payload signature. This is a loopback-only development deployment. Before allowing external traffic, configure TLS and appropriate edge rate limits.
 
 Delivery payload (only when `NOTIFICATION_WEBHOOK_URL` is configured):
 ```json
@@ -39,4 +39,4 @@ Delivery payload (only when `NOTIFICATION_WEBHOOK_URL` is configured):
   "status": "open"
 }
 ```
-Consumers **must deduplicate by `event_id`**: after network success, a worker crash before database commit can lead to duplicate HTTP delivery.
+Consumers **must deduplicate by `event_id`**. A worker can successfully deliver a notification and crash before the database commits its success, resulting in a repeated HTTP delivery. The `status` value reflects the incident when the worker sends the request, which may be different from the status when the event was recorded.

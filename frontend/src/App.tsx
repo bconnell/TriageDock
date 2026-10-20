@@ -45,9 +45,9 @@ function Login({ onSuccess }: { onSuccess: (session: Session) => void }) {
       <div className="login-accent" aria-hidden="true"><Activity size={148} strokeWidth={0.6} /></div>
       <form className="login-card" onSubmit={submit}>
         <div className="brand brand-login"><span className="brand-icon"><Activity size={22} /></span><span>Triage<span className="brand-muted">Dock</span></span></div>
-        <div className="login-overline"><ShieldCheck size={15} /> SECURE OPERATIONS CONSOLE</div>
-        <h1>Stay ahead of<br/><span>every incident.</span></h1>
-        <p>Sign in to your incident response workspace.</p>
+        <div className="login-overline"><ShieldCheck size={15} /> OPERATOR SIGN IN</div>
+        <h1>Review alerts.<br/><span>Track incidents.</span></h1>
+        <p>Sign in to review incidents and their history.</p>
         <label htmlFor="username">Username</label>
         <input id="username" autoComplete="username" value={username} onChange={event => setUsername(event.target.value)} required />
         <label htmlFor="password">Password</label>
@@ -103,7 +103,7 @@ function DetailPane({ data, onClose, onAction, busy }: {
       </div>
       <div className="detail-section">
         <div className="section-label">NOTIFICATION DELIVERY</div>
-        {data.deliveries.length === 0 ? <p className="muted small">No notification deliveries. Configure an HTTPS webhook to enable notifications.</p> :
+        {data.deliveries.length === 0 ? <p className="muted small">No delivery attempts recorded for this incident. Outbound notifications require an HTTPS webhook configured on the server.</p> :
           data.deliveries.map(delivery => <div className="delivery-row" key={delivery.id}><span>{delivery.event_kind}</span><Pill kind={delivery.status} label={delivery.status} /><span className="muted small">{delivery.attempts} attempts</span></div>)}
       </div>
     </aside>
@@ -192,23 +192,23 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
       <div className="nav-caption">WORKSPACE</div>
       <div className="nav-item selected"><LayoutDashboard size={18}/> Overview <span className="nav-indicator"/></div>
       <div className="sidebar-bottom">
-        <div className="system-status"><span className="status-dot"/> System operational</div>
+        <div className="system-status"><RefreshCw size={14}/> Checks for updates every 30 seconds</div>
         <div className="account"><div className="avatar">{(session.username || "O").slice(0, 1).toUpperCase()}</div><div className="account-text"><strong>{session.username}</strong><span>Operator</span></div><button className="icon-button" aria-label="Sign out" title="Sign out" onClick={() => void logout()}><LogOut size={17}/></button></div>
       </div>
     </aside>
     <main className="main">
-      <header className="topbar"><div className="breadcrumb">Workspace <ChevronRight size={14}/> <strong>Overview</strong></div><div className="top-actions"><span className="live"><span className="live-dot"/> LIVE MONITORING</span><span className="top-divider"/><span className="user-label">{session.username}</span></div></header>
+      <header className="topbar"><div className="breadcrumb">Workspace <ChevronRight size={14}/> <strong>Overview</strong></div><div className="top-actions"><span className="live"><RefreshCw size={13}/> 30 SECOND REFRESH</span><span className="top-divider"/><span className="user-label">{session.username}</span></div></header>
       <div className="content">
-        <div className="page-intro"><div><div className="eyebrow"><span className="eyebrow-line"/> OPERATIONS OVERVIEW</div><h1>Incident dashboard<span className="heading-period">.</span></h1><p>Monitor, triage, and resolve incoming alerts from one workspace.</p></div><button className="button button-secondary refresh" onClick={() => setReload(value => value + 1)} disabled={loading}><RefreshCw size={16} className={loading ? "spin" : ""}/> Refresh data</button></div>
+        <div className="page-intro"><div><div className="eyebrow"><span className="eyebrow-line"/> INCIDENT REVIEW</div><h1>Incident dashboard<span className="heading-period">.</span></h1><p>Review incoming alerts, update their status, and inspect activity history.</p></div><button className="button button-secondary refresh" onClick={() => setReload(value => value + 1)} disabled={loading}><RefreshCw size={16} className={loading ? "spin" : ""}/> Refresh data</button></div>
         {error && <div role="alert" className="error-banner"><AlertCircle size={18}/><span>{error}</span><button aria-label="Dismiss error" onClick={() => setError("")}><X size={15}/></button></div>}
         <div className="stat-grid">
           <StatCard title="Total incidents" value={stats.total} subtitle="All recorded incidents" tone="blue" icon={<Activity size={20}/>} />
           <StatCard title="Open incidents" value={stats.open} subtitle="Awaiting attention" tone="orange" icon={<ArrowUpRight size={20}/>} />
           <StatCard title="Critical & active" value={stats.critical_active} subtitle="Requires immediate review" tone="red" icon={<BellRing size={20}/>} />
-          <StatCard title="Resolved" value={stats.resolved} subtitle="Successfully closed" tone="green" icon={<CheckCircle2 size={20}/>} />
+          <StatCard title="Resolved" value={stats.resolved} subtitle="Marked resolved" tone="green" icon={<CheckCircle2 size={20}/>} />
         </div>
         <section className="table-card">
-          <div className="table-titlebar"><div><h2>Incident feed</h2><p>Real time visibility into alerts across your infrastructure</p></div><span className="count-badge">{pageData?.count ?? 0} incidents</span></div>
+          <div className="table-titlebar"><div><h2>Incident feed</h2><p>Alerts received by TriageDock. List refreshes every 30 seconds.</p></div><span className="count-badge">{pageData?.count ?? 0} incidents</span></div>
           <div className="filters">
             <form className="search-field" onSubmit={submitSearch}><Search size={17}/><input aria-label="Search incidents" placeholder="Search incidents, sources, keys…" value={search} onChange={event => setSearch(event.target.value)}/><button type="submit">Search</button></form>
             <div className="select-wrap"><Filter size={15}/><select aria-label="Filter by status" value={status} onChange={event => { setStatus(event.target.value as Status | ""); setPage(1); }}><option value="">All statuses</option><option value="open">Open</option><option value="acknowledged">Acknowledged</option><option value="resolved">Resolved</option></select></div>
@@ -230,7 +230,7 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
           </div>
           <div className="table-footer"><div>{pageData ? `Showing ${pageData.results.length} incidents on page ${page} of ${pageData.count} total` : "No data loaded"} <span className="footer-dot">·</span> {lastLoaded ? `Updated ${lastLoaded.toLocaleTimeString()}` : "Connecting"}</div><div className="paging"><button aria-label="Previous page" disabled={!pageData?.previous || loading} onClick={() => setPage(value => Math.max(1, value - 1))}><ChevronLeft size={17}/></button><span>{page}</span><button aria-label="Next page" disabled={!pageData?.next || loading} onClick={() => setPage(value => value + 1)}><ChevronRight size={17}/></button></div></div>
         </section>
-        <footer className="page-foot"><span><Command size={15}/> TriageDock <span className="footer-dot">·</span> Incident operations platform</span><span><ArrowDownRight size={14}/> Built for operational clarity</span></footer>
+        <footer className="page-foot"><span><Command size={15}/> TriageDock <span className="footer-dot">·</span> Incident intake and response</span><span><ArrowDownRight size={14}/> Data refreshes every 30 seconds</span></footer>
       </div>
     </main>
     {detail && <DetailPane data={detail} onClose={() => setDetail(null)} onAction={action} busy={busy}/>}
