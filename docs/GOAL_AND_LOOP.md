@@ -4,9 +4,9 @@
 
 Deliver a runnable, documented **TriageDock v1** in a finite scope:
 - An operator can authenticate, browse incidents, filter/search, inspect history, acknowledge, and resolve.
-- An external monitor can POST a signed-by-secret-key (not cryptographically signed) alert; repeated `source + external_key` maps to one record with an incremented count.
+- An external monitor can POST an API-key-authenticated alert; repeated `source + external_key` values map to one incident with an incremented occurrence count. Requests are not cryptographically signed.
 - Repeated alerts reopen resolved incidents. Every accepted alert and state change has an audit event.
-- An optional configured HTTPS notification endpoint receives new/reopened events through a database outbox and Celery worker.
+- An optional HTTPS notification receiver can be configured. New and reopened events are recorded in a database outbox and the Celery worker attempts delivery. Delivery may fail.
 - PostgreSQL migrations, Redis, Docker Compose, UI, CI, tests and documented failure modes are present.
 
 ## Vertical slices
@@ -35,7 +35,7 @@ Inspect current candidate → identify the **first failing completion gate** →
 | Behavior | Alert 201 → same alert 200; status transitions; session access; CSRF |
 | Reliability | Outbox success and retry exhaustion tests |
 | Security | No committed secrets, authenticated operator API, protected intake key, no exposed database port |
-| Documentation | Runnable quick start, API contract, limits, failure recovery |
+| Documentation | Runnable quick start, accurate API contract, limits, and failure behavior |
 | Safety | Writes exclusively inside this repository; no external file/profile/system modifications |
 
 A successful CI proves build, tests and a **containerized smoke flow**. A manually conducted interactive operator walkthrough is still separate evidence and must not be claimed until performed.
