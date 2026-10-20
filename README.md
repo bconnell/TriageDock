@@ -1,12 +1,27 @@
 # TriageDock
 
+[![CI](https://github.com/bconnell/TriageDock/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/bconnell/TriageDock/actions/workflows/ci.yml)
+
 **Receive monitoring alerts, track incidents, and record operator actions.**
 
 TriageDock accepts alerts from monitoring tools and groups repeated reports under the same incident. Operators can review the incident history, acknowledge incidents, and mark them resolved in a browser. An optional worker sends notifications to a configured HTTPS webhook.
 
 The stack is **Python 3.13, Django 6.1, Django REST Framework, PostgreSQL, Redis, Celery, React 19, and TypeScript**.
 
+![TriageDock operator dashboard displaying four synthetic incidents](docs/screenshots/dashboard.webp)
+
+*Actual browser screenshot captured by the CI walkthrough from a local Docker Compose environment using synthetic demo incidents. No production data.*
+
 The browser uses Django session authentication. The incident list supports search and filters by status and severity, with updates requested every 30 seconds while the page is open. An alert with the same `source` and `external_key` increments the existing incident's occurrence count. A new report for a resolved incident reopens it.
+
+## Engineering decisions
+
+- **One incident identity:** A unique fingerprint derived from `source` and `external_key` groups repeated alerts without creating duplicate incident records. Database transactions and uniqueness constraints protect the stored state.
+- **Auditable state changes:** Acknowledge, resolve, repeat and reopen operations create timestamped events. An acknowledged incident stays acknowledged when another identical alert arrives; a resolved one reopens.
+- **Delivery failure is visible:** Notifications go through a PostgreSQL outbox to a Celery worker. A receiver can receive a duplicate or no delivery after retries are exhausted; the UI shows delivery attempts.
+- **Deliberate scope:** Browser sessions, CSRF protection, an API key for monitor intake, local PostgreSQL and Redis services. No multi-tenant authorization, external deployment, or high-scale paging claim.
+
+See the [engineering walkthrough](docs/PROJECT_OVERVIEW.md) for the complete flow and verification details.
 
 ## Quick start (Docker Compose)
 
@@ -69,6 +84,7 @@ Authentication and CSRF are provided by Django. No public account registration e
 - [Development scope and verification](docs/GOAL_AND_LOOP.md)
 - [Release acceptance and GitHub settings](docs/RELEASE.md)
 - [Security policy](SECURITY.md)
+- [First release notes](docs/RELEASE_NOTES.md)
 - [Contributing](CONTRIBUTING.md)
 
 Framework references: [Django authentication](https://docs.djangoproject.com/en/stable/topics/auth/default/), [Django REST Framework authentication](https://www.django-rest-framework.org/api-guide/authentication/), [Celery tasks](https://docs.celeryq.dev/en/stable/userguide/tasks.html), and [Docker Compose](https://docs.docker.com/compose/).

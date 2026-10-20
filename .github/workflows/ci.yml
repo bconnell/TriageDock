@@ -73,15 +73,14 @@ jobs:
           DJANGO_SECRET_KEY: ci-ephemeral-smoke-secret
           INGEST_API_KEY: ci-ephemeral-smoke-intake
           POSTGRES_PASSWORD: ci-ephemeral-smoke-postgres
-          EXPORT_IMAGE_LOG: "1"
         run: |
           docker compose exec -T web python manage.py seed_demo
           # The HTTP smoke test created exactly one synthetic alert. Retire only that CI fixture before the portfolio capture.
           docker compose exec -T web python manage.py shell -c 'from incidents.models import Incident; Incident.objects.filter(source="ci", external_key="idempotent").delete()'
           docker compose exec -T web python manage.py shell -c 'from django.contrib.auth import get_user_model; from incidents.models import Incident; from incidents.services import transition_incident; U=get_user_model(); U.objects.create_user(username="demo-operator",password="demo-ci-password-2026") if not U.objects.filter(username="demo-operator").exists() else None; transition_incident(Incident.objects.get(external_key="queue-depth").pk,"acknowledge","demo-operator"); transition_incident(Incident.objects.get(external_key="cache-hit").pk,"resolve","demo-operator")'
           python .github/scripts/browser_proof.py
-      - name: Retain representative browser screenshot
-        if: always()
+      - name: Retain browser screenshot for failed-run diagnosis
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: dashboard-proof

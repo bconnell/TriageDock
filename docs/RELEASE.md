@@ -10,17 +10,17 @@ Require the exact release commit to pass all checks in [CI](../.github/workflows
 - Intake rejects requests without an API key; first accepted alert returns 201; repeated identity returns 200 and increments occurrences; resolved incidents reopen.
 - Notification records persist, bounded retry failures remain visible, and the receiver may see duplicates.
 - Local `.env` remains uncommitted; web port binds to loopback; no database or Redis host ports.
-- Screenshot shown in the README, when present, must be captured from the actual application in its demo-data mode and reviewed for legibility.
+- The README screenshot was captured and visually reviewed from the running application with synthetic demo incidents; browser CI repeats the interaction path on changes.
 - External deployment is out of scope; performance at production incident volume and external alert rates is not established.
 
 ## GitHub administration
 
-The current connection can change repository source, branches, pull requests, and merges, but does not expose repository settings edits or GitHub release publishing. The owner should finish these controls in GitHub settings when available:
+The repository connector can edit source, branches, pull requests and merges, but cannot edit the GitHub repository settings. Release publication uses an explicitly scoped GitHub Actions workflow instead. The owner should finish these settings in GitHub when available:
 
 - An active `main` ruleset requiring pull requests and the `backend`, `frontend`, `docker`, and `security` status checks.
 - Prevent forced updates/deletion and remove unnecessary always-allowed administrator bypasses. Avoid imposing approval requirements on a solo-maintainer repository without an available reviewer.
 - Repository description and topics reflecting the actual stack; optional image preview once manually checked.
-- Create a `v1.0.0` tag and release only for the final reviewed commit and use factual release notes.
+- The one-time release workflow creates `v1.0.0` only when all CI checks on the exact current `main` commit pass. If the release action is blocked by repository token policy, the owner must publish the verified commit manually. Do not retag another commit without an explicit release decision.
 
 ## Evidence limitations
 

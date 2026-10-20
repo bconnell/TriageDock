@@ -38,7 +38,7 @@ Inspect current candidate → identify the **first failing completion gate** →
 | Documentation | Runnable quick start, accurate API contract, limits, and failure behavior |
 | Safety | Writes exclusively inside this repository; no external file/profile/system modifications |
 
-A successful CI proves build, tests and a **containerized smoke flow**. A manually conducted interactive operator walkthrough is still separate evidence and must not be claimed until performed.
+A successful CI proves build, tests and a **containerized smoke flow**. The Chrome CI browser acceptance test exercises operator login, list, detail, acknowledgement and resolution on the real Compose deployment, with a screenshot from synthetic demo incidents. Human testing remains independent; this is not evidence of external production readiness.
 
 ## Explicit safety constraints
 
