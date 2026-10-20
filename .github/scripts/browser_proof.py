@@ -52,6 +52,9 @@ def main():
         assert "Replication lag detected" in driver.page_source
         assert "Cache hit ratio below target" in driver.page_source
         assert "No incidents found" not in driver.find_element(By.CSS_SELECTOR, ".table-card").text
+        full_height = driver.execute_script("return Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)")
+        driver.set_window_size(1440, max(1000, min(int(full_height) + 40, 1700)))
+        driver.execute_script("window.scrollTo(0, 0)")
         capture(driver)
 
         # Exercise a complete operator transition in the real page.
