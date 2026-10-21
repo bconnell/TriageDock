@@ -140,7 +140,15 @@ INGEST_SHARED_KEY_ENABLED = os.getenv("INGEST_SHARED_KEY_ENABLED", "1") == "1"
 NOTIFICATION_WEBHOOK_URL = os.getenv("NOTIFICATION_WEBHOOK_URL", "")
 if NOTIFICATION_WEBHOOK_URL:
     from incidents.webhook import validate_webhook_url
-    validate_webhook_url(NOTIFICATION_WEBHOOK_URL)
+    webhook_host = validate_webhook_url(NOTIFICATION_WEBHOOK_URL)
+    allowed_hosts = {
+        host.strip().lower() for host in
+        os.getenv("NOTIFICATION_WEBHOOK_ALLOWED_HOSTS", "").split(",") if host.strip()
+    }
+    if not DEBUG and webhook_host not in allowed_hosts:
+        raise ImproperlyConfigured(
+            "Production webhook host must appear in NOTIFICATION_WEBHOOK_ALLOWED_HOSTS"
+        )
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
 CELERY_TASK_IGNORE_RESULT = True
 CELERY_TIMEZONE = "UTC"

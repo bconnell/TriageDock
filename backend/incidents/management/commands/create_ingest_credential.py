@@ -17,7 +17,7 @@ class Command(BaseCommand):
         if not label or not source or len(label) > 80 or len(source) > 80:
             raise CommandError("Both label and source must be 1-80 characters")
         if IngestCredential.objects.filter(label=label).exists():
-            raise CommandError("Credential label already exists. Revoke it before replacing.")
+            raise CommandError("Credential label already exists. Rotate by creating a new label, then revoking the previous label.")
         key = secrets.token_urlsafe(48)
         IngestCredential.objects.create(
             label=label, source=source, key_digest=hashlib.sha256(key.encode()).hexdigest()

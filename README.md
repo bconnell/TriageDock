@@ -39,7 +39,7 @@ For independent monitors, generate a high-entropy source-scoped ingestion key (t
 docker compose exec web python manage.py create_ingest_credential --label host-one --source host-one
 ```
 
-Store that key outside the repository and send it using `X-TriageDock-Key`. Revoke it with `docker compose exec web python manage.py revoke_ingest_credential host-one`. Source-scoped credentials cannot impersonate another source. The original environment key remains supported for existing integrations; set `INGEST_SHARED_KEY_ENABLED=0` after migrating to source-scoped keys to disable it.
+Store that key outside the repository and send it using `X-TriageDock-Key`. For rotation, create a replacement using a new label, update the monitor, then revoke the old label. Revoke it with `docker compose exec web python manage.py revoke_ingest_credential host-one`. Source-scoped credentials cannot impersonate another source. The original environment key remains supported for existing integrations; set `INGEST_SHARED_KEY_ENABLED=0` after migrating to source-scoped keys to disable it.
 
 
 
@@ -85,6 +85,8 @@ Run the [local validation gate](scripts/verify-local.ps1) using Windows PowerShe
 The optional `-WithDocker` switch validates Compose configuration and available physical memory; it does not start containers automatically. For a live integration walkthrough, use the documented Docker Compose steps and manually test permissions, ingestion, notification failures, and keyboard navigation. **No local end-to-end success is claimed until these checks are run and their output recorded.**
 
 ### Database safety
+
+**Before updating an installation that already contains incidents, run a backup and verify it restores before starting the new containers or applying migrations.**
 
 The PostgreSQL volume retains incidents across `docker compose down`. Use `.\scripts\backup.ps1` to save a new custom-format dump inside the ignored `backups/` directory. Confirm that it can restore into an isolated project using `.\scripts\verify-backup.ps1 -Backup .\backups\your-backup.dump`. The script never overwrites the original database or removes the verification volume. Do not publish backups or use `docker compose down -v`.
 
