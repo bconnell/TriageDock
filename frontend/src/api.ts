@@ -36,6 +36,10 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
   if (!response.ok) {
     const detail = (payload as { detail?: unknown } | null)?.detail;
+    if (path !== "/api/v1/login/" && response.status === 403 &&
+        typeof detail === "string" && detail.includes("Authentication credentials were not provided")) {
+      window.dispatchEvent(new Event("triagedock:session-expired"));
+    }
     throw new ApiError(typeof detail === "string" ? detail : "Request failed.", response.status);
   }
   return payload as T;

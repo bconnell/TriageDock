@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useState, useRef, type FormEvent, type ReactNode } from "react";
 import {
   Activity, AlertCircle, ArrowDownRight, ArrowUpRight, BellRing,
   Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3,
@@ -73,8 +73,25 @@ function DetailPane({ data, onClose, onAction, busy }: {
   onAction: (action: "acknowledge" | "resolve") => Promise<void>;
   busy: boolean;
 }) {
+  const dialogRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = dialogRef.current;
+    dialog?.querySelector<HTMLButtonElement>("button")?.focus();
+    function trap(event: KeyboardEvent) {
+      if (event.key === "Escape") { event.preventDefault(); onClose(); return; }
+      if (event.key !== "Tab" || !dialog) return;
+      const items = Array.from(dialog.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled])'));
+      if (!items.length) { event.preventDefault(); return; }
+      const first = items[0], last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    }
+    document.addEventListener("keydown", trap);
+    return () => { document.removeEventListener("keydown", trap); previous?.focus(); };
+  }, [onClose]);
   return <div className="overlay" onMouseDown={onClose}>
-    <aside className="detail-pane" role="dialog" aria-modal="true" aria-labelledby="detail-title" onMouseDown={event => event.stopPropagation()}>
+    <aside ref={dialogRef} className="detail-pane" role="dialog" aria-modal="true" aria-labelledby="detail-title" onMouseDown={event => event.stopPropagation()}>
       <div className="detail-top"><span className="eyebrow">INCIDENT DETAILS</span><button className="icon-button" aria-label="Close incident details" onClick={onClose}><X size={20}/></button></div>
       <h2 id="detail-title">{data.title}</h2>
       <div className="pills"><Pill kind={data.severity} label={severityNames[data.severity]} /><Pill kind={data.status} label={statusNames[data.status]} /></div>
@@ -124,8 +141,10 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
   const [error, setError] = useState("");
   const [lastLoaded, setLastLoaded] = useState<Date | null>(null);
   const [reload, setReload] = useState(0);
+  const requestVersion = useRef(0);
 
   const load = useCallback(async () => {
+    const version = ++requestVersion.current;
     setError("");
     setLoading(true);
     try {
@@ -133,29 +152,25 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
         api.stats(),
         api.list({ status: status || undefined, severity: severity || undefined, q: query, page }),
       ]);
+      if (version !== requestVersion.current) return;
       setStats(counts);
       setPageData(result);
       setLastLoaded(new Date());
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Unable to load incidents.");
+      if (version === requestVersion.current) setError(reason instanceof Error ? reason.message : "Unable to load incidents.");
     } finally {
-      setLoading(false);
+      if (version === requestVersion.current) setLoading(false);
     }
   }, [status, severity, query, page]);
 
-  useEffect(() => { void load(); }, [load, reload]);
+  useEffect(() => { void load(); return () => { requestVersion.current += 1; }; }, [load, reload]);
 
   useEffect(() => {
-    const refresh = window.setInterval(() => setReload(value => value + 1), 30000);
+    const refresh = window.setInterval(() => {
+      if (!document.hidden) setReload(value => value + 1);
+    }, 30000);
     return () => window.clearInterval(refresh);
   }, []);
-
-  useEffect(() => {
-    if (!detail) return;
-    const onEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setDetail(null); };
-    window.addEventListener("keydown", onEscape);
-    return () => window.removeEventListener("keydown", onEscape);
-  }, [detail]);
 
   async function openIncident(incident: Incident) {
     setError("");
@@ -216,7 +231,7 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
           </div>
           <div className="table-scroll">
             <table><thead><tr><th>INCIDENT</th><th>SEVERITY</th><th>STATUS</th><th>OCCURRENCES</th><th>LAST SEEN</th><th><span className="sr-only">Open details</span></th></tr></thead>
-              <tbody>{pageData?.results.map(incident => <tr key={incident.id} onClick={() => void openIncident(incident)}>
+              <tbody>{pageData?.results.map(incident => <tr key={incident.id}>
                 <td><div className="incident-cell"><span className={`incident-mark mark-${incident.severity}`}>{incident.severity === "critical" ? <AlertCircle size={18}/> : <Activity size={18}/>}</span><div><div className="incident-title">{incident.title}</div><div className="incident-source">{incident.source} <span className="separator">·</span> {incident.external_key}</div></div></div></td>
                 <td><Pill kind={incident.severity} label={severityNames[incident.severity]}/></td>
                 <td><Pill kind={incident.status} label={statusNames[incident.status]}/></td>
@@ -243,6 +258,9 @@ export default function App() {
   useEffect(() => {
     api.session().then(setSession).catch((reason: unknown) =>
       setError(reason instanceof ApiError ? reason.message : "Unable to connect to the server."));
+    const expired = () => setSession({ authenticated: false, username: null });
+    window.addEventListener("triagedock:session-expired", expired);
+    return () => window.removeEventListener("triagedock:session-expired", expired);
   }, []);
   if (!session) return <div className="startup"><div className="brand"><span className="brand-icon"><Activity size={20}/></span>TriageDock</div><p>{error || "Connecting to incident services…"}</p>{error && <button className="button button-secondary" onClick={() => window.location.reload()}>Retry connection</button>}</div>;
   return session.authenticated
