@@ -31,3 +31,7 @@ The v1.0.0 smoke and browser checks are historical evidence for that release onl
 For any new tag, first execute `scripts/verify-local.ps1` on a suitably resourced development system using pinned dependencies and preserve its output. Perform an isolated Compose walkthrough and real PostgreSQL concurrency/delivery recovery tests. Run the backup-and-restore verification script using an operator-approved test backup. Confirm login abuse, scoped keys, permissions, keyboard-only navigation and reduced-width layout. Review memory consumption and ensure the work is serial.
 
 Merge policy is independent of release policy: source changes may be merged with explicitly documented unverified checks when the owner authorizes this, but **do not publish a new stable release** until all executable gates are green. The existing v1.0.0 tag must remain immutable.
+
+## Local evidence file
+
+`scripts/verify-local.ps1` verifies a **clean exact commit**. It writes a timestamped PowerShell transcript under the ignored `.validation/` directory in the repository and returns an error on the first failed gate. Save the report identifier and relevant pass/fail lines in the release review. Never publish raw local transcripts without reviewing them for machine paths or other private data. Restore the caller's environment variables and working directory when the gate finishes.
