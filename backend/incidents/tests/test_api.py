@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
+from django.core.cache import cache
 from django.test import override_settings
 from django.urls import reverse
 from rest_framework.test import APITestCase
@@ -18,9 +19,10 @@ ALERT = {
 }
 
 
-@override_settings(INGEST_API_KEY="testing-key")
+@override_settings(INGEST_API_KEY="testing-key", CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}})
 class IncidentApiTests(APITestCase):
     def setUp(self):
+        cache.clear()
         self.user = get_user_model().objects.create_user(
             username="operator", password="usable-test-password"
         )
@@ -137,3 +139,28 @@ class IncidentApiTests(APITestCase):
         row.revoked_at = timezone.now()
         row.save(update_fields=["revoked_at"])
         self.assertEqual(self.ingest({**ALERT, "source": "host-a"}, key=key).status_code, 401)
+
+    def test_ingest_flood_has_bounded_rate(self):
+        for _ in range(60):
+            response = self.ingest()
+            self.assertIn(response.status_code, (200, 201))
+        self.assertEqual(self.ingest().status_code, 429)
+
+    def test_admin_history_is_read_only(self):
+        from django.contrib import admin
+        from incidents.models import Incident, IncidentEvent, NotificationDelivery
+        for model in (Incident, IncidentEvent, NotificationDelivery):
+            controller = admin.site._registry[model]
+            self.assertFalse(controller.has_add_permission(None))
+            self.assertFalse(controller.has_change_permission(None))
+            self.assertFalse(controller.has_delete_permission(None))
+
+    def test_webhook_rejects_internal_destination(self):
+        from django.core.exceptions import ImproperlyConfigured
+        from incidents.webhook import validate_webhook_url
+        for url in ("http://example.com/x", "https://127.0.0.1/x",
+                    "https://localhost/x", "https://10.0.0.3/x",
+                    "https://user:pass@example.com/x"):
+            with self.assertRaises(ImproperlyConfigured):
+                validate_webhook_url(url)
+        self.assertEqual(validate_webhook_url("https://alerts.example.test/x"), "alerts.example.test")
