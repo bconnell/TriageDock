@@ -124,3 +124,16 @@ class IncidentApiTests(APITestCase):
         events = self.client.get(reverse("incident-events", kwargs={"pk": incident_id})).data
         self.assertEqual(events["count"], 56)
         self.assertEqual(len(events["results"]), 50)
+
+    def test_scoped_ingest_key_and_revocation(self):
+        import hashlib
+        from django.utils import timezone
+        from incidents.models import IngestCredential
+        key = "test-high-entropy-key-for-source-1234567890123456789"
+        row = IngestCredential.objects.create(label="monitor-one", source="host-a",
+            key_digest=hashlib.sha256(key.encode()).hexdigest())
+        self.assertEqual(self.ingest({**ALERT, "source": "host-b"}, key=key).status_code, 403)
+        self.assertEqual(self.ingest({**ALERT, "source": "host-a"}, key=key).status_code, 201)
+        row.revoked_at = timezone.now()
+        row.save(update_fields=["revoked_at"])
+        self.assertEqual(self.ingest({**ALERT, "source": "host-a"}, key=key).status_code, 401)

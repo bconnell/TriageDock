@@ -85,3 +85,15 @@ class NotificationDelivery(models.Model):
         indexes = [
             models.Index(fields=["status", "next_attempt_at"], name="delivery_due_idx"),
         ]
+
+
+class IngestCredential(models.Model):
+    """A high-entropy credential scoped to one alert source."""
+    label = models.CharField(max_length=80, unique=True)
+    source = models.CharField(max_length=80)
+    key_digest = models.CharField(max_length=64, unique=True, editable=False)
+    created_at = models.DateTimeField(default=timezone.now)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return self.label

@@ -135,6 +135,7 @@ CACHES = {"default": {
 DATA_UPLOAD_MAX_MEMORY_SIZE = 65536
 
 INGEST_API_KEY = os.getenv("INGEST_API_KEY", "")
+INGEST_SHARED_KEY_ENABLED = os.getenv("INGEST_SHARED_KEY_ENABLED", "1") == "1"
 NOTIFICATION_WEBHOOK_URL = os.getenv("NOTIFICATION_WEBHOOK_URL", "")
 if NOTIFICATION_WEBHOOK_URL:
     from incidents.webhook import validate_webhook_url
