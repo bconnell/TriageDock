@@ -3,7 +3,6 @@ import hashlib
 import json
 import secrets
 from django.core.cache import cache
-from django.core.cache.backends.base import InvalidCacheBackendError
 
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
@@ -18,8 +17,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Incident, IncidentEvent
+from .pagination import EventPagination
 from .permissions import IsIncidentOperator
-from .serializers import IncomingAlertSerializer, IncidentDetailSerializer, IncidentSerializer
+from .serializers import IncomingAlertSerializer, IncidentDetailSerializer, IncidentSerializer, EventSerializer
 from .services import InvalidTransition, ingest_alert, transition_incident
 
 
@@ -159,8 +159,8 @@ class IncidentActionView(APIView):
 
 
 class IncidentEventListView(generics.ListAPIView):
-    serializer_class = __import__("incidents.serializers", fromlist=["EventSerializer"]).EventSerializer
-    pagination_class = __import__("incidents.pagination", fromlist=["EventPagination"]).EventPagination
+    serializer_class = EventSerializer
+    pagination_class = EventPagination
 
     def get_queryset(self):
         get_object_or_404(Incident, pk=self.kwargs["pk"])

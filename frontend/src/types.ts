@@ -34,6 +34,7 @@ export interface Delivery {
 
 export interface IncidentDetail extends Incident {
   events: IncidentEvent[];
+  events_has_more: boolean;
   deliveries: Delivery[];
 }
 
