@@ -12,6 +12,7 @@ x-app-environment: &app-environment
   POSTGRES_HOST: db
   NOTIFICATION_WEBHOOK_URL: ${NOTIFICATION_WEBHOOK_URL:-}
   CELERY_BROKER_URL: redis://redis:6379/0
+  REDIS_CACHE_URL: redis://redis:6379/1
 
 x-app-base: &app-base
   build:
@@ -22,6 +23,8 @@ x-app-base: &app-base
 services:
   db:
     image: postgres:16-alpine
+    mem_limit: 512m
+    command: ["postgres", "-c", "max_connections=30"]
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-triagedock}
       POSTGRES_USER: ${POSTGRES_USER:-triagedock}
@@ -36,7 +39,10 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    mem_limit: 256m
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "96mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -45,6 +51,7 @@ services:
 
   migrate:
     <<: *app-base
+    mem_limit: 384m
     command: ["python", "manage.py", "migrate", "--noinput"]
     depends_on:
       db:
@@ -55,6 +62,7 @@ services:
 
   web:
     <<: *app-base
+    mem_limit: 384m
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
@@ -64,7 +72,8 @@ services:
 
   worker:
     <<: *app-base
-    command: ["celery", "-A", "config", "worker", "--loglevel=INFO", "--concurrency=2"]
+    mem_limit: 512m
+    command: ["celery", "-A", "config", "worker", "--loglevel=INFO", "--concurrency=1"]
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -72,6 +81,7 @@ services:
 
   beat:
     <<: *app-base
+    mem_limit: 192m
     command: ["celery", "-A", "config", "beat", "--loglevel=INFO", "--schedule=/tmp/triagedock-celerybeat-schedule"]
     depends_on:
       migrate:
@@ -80,3 +90,4 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:

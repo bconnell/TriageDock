@@ -1,7 +1,7 @@
 from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
-from django.test import TestCase, override_settings
+from django.test import TransactionTestCase, override_settings
 from django.utils import timezone
 
 from incidents.models import NotificationDelivery
@@ -13,7 +13,7 @@ ALERT = {"source": "monitor", "external_key": "host-1", "title": "CPU hot", "sev
 
 
 @override_settings(NOTIFICATION_WEBHOOK_URL="https://alerts.example.test/events")
-class DeliveryTests(TestCase):
+class DeliveryTests(TransactionTestCase):
     def setUp(self):
         self.incident, _ = ingest_alert(ALERT)
         self.delivery = NotificationDelivery.objects.get(event__incident=self.incident)
