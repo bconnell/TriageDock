@@ -90,8 +90,8 @@ class IngestRateThrottle(SimpleRateThrottle):
     def get_cache_key(self, request, view):
         # Do not trust unconfigured proxy forwarding headers for rate limiting.
         addr = request.META.get("REMOTE_ADDR", "unknown")
-        key_hash = hashlib.sha256(request.headers.get("X-TriageDock-Key", "").encode()).hexdigest()[:24]
-        ident = hashlib.sha256(f"{addr}:{key_hash}".encode()).hexdigest()
+        # Include only REMOTE_ADDR: a different guessed key must not reset the quota.
+        ident = hashlib.sha256(addr.encode()).hexdigest()
         return self.cache_format % {"scope": self.scope, "ident": ident}
 
 

@@ -61,7 +61,7 @@ def send_delivery(delivery_id: int) -> bool:
     ok = False
     failure_name = ""
     try:
-        with urllib.request.build_opener(NoRedirect()).open(request, timeout=5) as response:
+        with urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect()).open(request, timeout=5) as response:
             if not 200 <= response.status < 300:
                 raise ValueError("Unexpected HTTP response")
         ok = True
@@ -107,7 +107,7 @@ def process_due_deliveries():
     due = list(NotificationDelivery.objects.filter(
         Q(status=NotificationDelivery.Status.PENDING, next_attempt_at__lte=now) |
         Q(status=NotificationDelivery.Status.PROCESSING, claim_expires_at__lte=now)
-    ).order_by("id").values_list("id", flat=True)[:50])
+    ).order_by("id").values_list("id", flat=True)[:8])
     for delivery_id in due:
         send_delivery(delivery_id)
     return len(due)
