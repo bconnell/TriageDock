@@ -64,7 +64,7 @@ def send_delivery(delivery_id: int) -> bool:
     request = urllib.request.Request(
         settings.NOTIFICATION_WEBHOOK_URL,
         data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json", "User-Agent": "TriageDock/1.1"},
+        headers={"Content-Type": "application/json", "User-Agent": "TriageDock"},
         method="POST",
     )
     ok = False
