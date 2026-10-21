@@ -35,3 +35,7 @@ Merge policy is independent of release policy: source changes may be merged with
 ## Local evidence file
 
 `scripts/verify-local.ps1` verifies a **clean exact commit**. It writes a timestamped PowerShell transcript under the ignored `.validation/` directory in the repository and returns an error on the first failed gate. Save the report identifier and relevant pass/fail lines in the release review. Never publish raw local transcripts without reviewing them for machine paths or other private data. Restore the caller's environment variables and working directory when the gate finishes.
+
+## Isolated database/Redis verification
+
+`scripts/verify-compose.ps1 -ConfirmIsolatedRun` runs the Django suite against a uniquely named, local PostgreSQL/Redis Compose project without publishing network ports. It checks measured memory and disk headroom, uses one build at a time, and keeps an ignored exact-commit transcript. It stops only project-owned containers and **preserves** the isolated volume. This proves database-backed tests only when actually executed; it does not prove browser interactions, live worker delivery, or backup recovery.
