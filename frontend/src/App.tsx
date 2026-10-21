@@ -136,6 +136,7 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [detail, setDetail] = useState<IncidentDetail | null>(null);
+  const closeDetail = useCallback(() => setDetail(null), []);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -248,7 +249,7 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
         <footer className="page-foot"><span><Command size={15}/> TriageDock <span className="footer-dot">·</span> Incident intake and response</span><span><ArrowDownRight size={14}/> Data refreshes every 30 seconds</span></footer>
       </div>
     </main>
-    {detail && <DetailPane data={detail} onClose={() => setDetail(null)} onAction={action} busy={busy}/>}
+    {detail && <DetailPane data={detail} onClose={closeDetail} onAction={action} busy={busy}/>}
   </div>;
 }
 

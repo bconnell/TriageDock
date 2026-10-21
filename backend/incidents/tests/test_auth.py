@@ -1,7 +1,8 @@
 import json
 
 from django.contrib.auth import get_user_model
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
+from django.core.cache import cache
 from django.urls import reverse
 
 
@@ -36,3 +37,23 @@ class SessionTests(TestCase):
             HTTP_X_CSRFTOKEN=self.client.cookies["csrftoken"].value,
         )
         self.assertEqual(result.status_code, 401)
+
+    @override_settings(CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}})
+    def test_login_limit_and_recovery(self):
+        cache.clear()
+        self.client.get(reverse("session"))
+        token = self.client.cookies["csrftoken"].value
+        for attempt in range(5):
+            response = self.client.post(reverse("login"),
+                data=json.dumps({"username": "operator", "password": "wrong"}),
+                content_type="application/json", HTTP_X_CSRFTOKEN=token)
+            self.assertEqual(response.status_code, 401)
+        locked = self.client.post(reverse("login"),
+            data=json.dumps({"username": "operator", "password": "strong-test-password"}),
+            content_type="application/json", HTTP_X_CSRFTOKEN=token)
+        self.assertEqual(locked.status_code, 429)
+        cache.clear()
+        unlocked = self.client.post(reverse("login"),
+            data=json.dumps({"username": "operator", "password": "strong-test-password"}),
+            content_type="application/json", HTTP_X_CSRFTOKEN=token)
+        self.assertEqual(unlocked.status_code, 200)

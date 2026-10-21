@@ -98,3 +98,29 @@ class IncidentApiTests(APITestCase):
         self.assertEqual(self.ingest().status_code, 200)
         self.assertEqual(NotificationDelivery.objects.count(), 1)
         self.assertEqual(IncidentEvent.objects.count(), 2)
+
+    def test_viewer_cannot_resolve_incident(self):
+        incident_id = self.ingest().data["id"]
+        viewer = get_user_model().objects.create_user("viewer", password="viewer-pass-for-test")
+        self.client.force_authenticate(user=viewer)
+        self.assertEqual(self.client.get(reverse("incident-list")).status_code, 200)
+        self.assertEqual(self.client.post(reverse("incident-action", kwargs={
+            "pk": incident_id, "action": "resolve"
+        })).status_code, 403)
+
+    def test_repeat_cannot_downgrade_critical_severity(self):
+        self.assertEqual(self.ingest().status_code, 201)
+        self.ingest({**ALERT, "severity": "low"})
+        self.assertEqual(Incident.objects.get().severity, "critical")
+
+    def test_paginated_event_history(self):
+        incident_id = self.ingest().data["id"]
+        for _ in range(55):
+            self.ingest()
+        self.client.force_authenticate(user=self.user)
+        detail = self.client.get(reverse("incident-detail", kwargs={"pk": incident_id})).data
+        self.assertEqual(len(detail["events"]), 50)
+        self.assertTrue(detail["events_has_more"])
+        events = self.client.get(reverse("incident-events", kwargs={"pk": incident_id})).data
+        self.assertEqual(events["count"], 56)
+        self.assertEqual(len(events["results"]), 50)

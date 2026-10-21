@@ -13,18 +13,18 @@ jobs:
         image: postgres:16
         env:
           POSTGRES_USER: triagedock
-          POSTGRES_PASSWORD: ci-password
+          POSTGRES_PASSWORD: ci-valid-postgres-password-long-2026
           POSTGRES_DB: triagedock
         ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U triagedock -d triagedock"
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      DJANGO_SECRET_KEY: ci-only-secret-not-for-production
-      INGEST_API_KEY: ci-only-ingest-key
+      DJANGO_SECRET_KEY: ci-valid-secret-with-unique-32-plus-characters-2026
+      INGEST_API_KEY: ci-ingest-valid-unique-32-plus-characters-2026
       POSTGRES_DB: triagedock
       POSTGRES_USER: triagedock
-      POSTGRES_PASSWORD: ci-password
+      POSTGRES_PASSWORD: ci-valid-postgres-password-long-2026
       POSTGRES_HOST: localhost
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,testserver
     steps:
@@ -60,22 +60,23 @@ jobs:
       - run: docker build -f backend/Dockerfile -t triagedock:ci .
       - name: Boot Compose and verify real HTTP / PostgreSQL integration
         env:
-          DJANGO_SECRET_KEY: ci-ephemeral-smoke-secret
-          INGEST_API_KEY: ci-ephemeral-smoke-intake
-          POSTGRES_PASSWORD: ci-ephemeral-smoke-postgres
+          DJANGO_SECRET_KEY: ci-ephemeral-secret-long-unique-2026-characters
+          INGEST_API_KEY: ci-ephemeral-ingest-long-unique-2026-characters
+          POSTGRES_PASSWORD: ci-ephemeral-postgres-long-unique-2026
         run: bash .github/scripts/smoke.sh
       - name: Install isolated browser verification dependencies
         run: python -m pip install selenium==4.51.0 pillow==13.0.0
       - name: Verify operator browser path and capture real demo UI
         env:
-          DJANGO_SECRET_KEY: ci-ephemeral-smoke-secret
-          INGEST_API_KEY: ci-ephemeral-smoke-intake
-          POSTGRES_PASSWORD: ci-ephemeral-smoke-postgres
+          DJANGO_SECRET_KEY: ci-ephemeral-secret-long-unique-2026-characters
+          INGEST_API_KEY: ci-ephemeral-ingest-long-unique-2026-characters
+          POSTGRES_PASSWORD: ci-ephemeral-postgres-long-unique-2026
         run: |
           docker compose exec -T web python manage.py seed_demo
           # The HTTP smoke test created exactly one synthetic alert. Retire only that CI fixture before the portfolio capture.
           docker compose exec -T web python manage.py shell -c 'from incidents.models import Incident; Incident.objects.filter(source="ci", external_key="idempotent").delete()'
-          docker compose exec -T web python manage.py shell -c 'from django.contrib.auth import get_user_model; from incidents.models import Incident; from incidents.services import transition_incident; U=get_user_model(); U.objects.create_user(username="demo-operator",password="demo-ci-password-2026") if not U.objects.filter(username="demo-operator").exists() else None; transition_incident(Incident.objects.get(external_key="queue-depth").pk,"acknowledge","demo-operator"); transition_incident(Incident.objects.get(external_key="cache-hit").pk,"resolve","demo-operator")'
+          docker compose exec -T web python manage.py shell -c 'from django.contrib.auth import get_user_model; from incidents.models import Incident; from incidents.services import transition_incident; U=get_user_model(); U.objects.create_user(username="demo-operator",password="demo-ci-valid-postgres-password-long-2026-2026") if not U.objects.filter(username="demo-operator").exists() else None; transition_incident(Incident.objects.get(external_key="queue-depth").pk,"acknowledge","demo-operator"); transition_incident(Incident.objects.get(external_key="cache-hit").pk,"resolve","demo-operator")'
+          docker compose exec -T web python manage.py grant_operator demo-operator
           python .github/scripts/browser_proof.py
       - name: Retain browser screenshot for failed-run diagnosis
         if: failure()
@@ -88,16 +89,16 @@ jobs:
       - name: Print Compose logs if smoke fails
         if: failure()
         env:
-          DJANGO_SECRET_KEY: ci-ephemeral-smoke-secret
-          INGEST_API_KEY: ci-ephemeral-smoke-intake
-          POSTGRES_PASSWORD: ci-ephemeral-smoke-postgres
+          DJANGO_SECRET_KEY: ci-ephemeral-secret-long-unique-2026-characters
+          INGEST_API_KEY: ci-ephemeral-ingest-long-unique-2026-characters
+          POSTGRES_PASSWORD: ci-ephemeral-postgres-long-unique-2026
         run: docker compose logs --tail=100
       - name: Stop Compose services
         if: always()
         env:
-          DJANGO_SECRET_KEY: ci-ephemeral-smoke-secret
-          INGEST_API_KEY: ci-ephemeral-smoke-intake
-          POSTGRES_PASSWORD: ci-ephemeral-smoke-postgres
+          DJANGO_SECRET_KEY: ci-ephemeral-secret-long-unique-2026-characters
+          INGEST_API_KEY: ci-ephemeral-ingest-long-unique-2026-characters
+          POSTGRES_PASSWORD: ci-ephemeral-postgres-long-unique-2026
         run: docker compose down
   security:
     runs-on: ubuntu-latest

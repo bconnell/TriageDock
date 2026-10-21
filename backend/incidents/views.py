@@ -60,7 +60,9 @@ def login_view(request):
         return JsonResponse({"detail": "Invalid credentials"}, status=400)
     try:
         # Also prevent attackers from generating unlimited passwords for one username.
-        if _too_many_logins(_login_limit_key(request, username)):
+        limited_user = _too_many_logins(_login_limit_key(request, username))
+        limited_ip = _too_many_logins(_login_limit_key(request, "*"))
+        if limited_user or limited_ip:
             response = JsonResponse({"detail": "Too many sign-in attempts. Try later."}, status=429)
             response["Retry-After"] = "900"
             return response
@@ -71,6 +73,7 @@ def login_view(request):
         return JsonResponse({"detail": "Invalid username or password"}, status=401)
     login(request, user)
     cache.delete(_login_limit_key(request, username))
+    cache.delete(_login_limit_key(request, "*"))
     return JsonResponse({"authenticated": True, "username": user.get_username()})
 
 
