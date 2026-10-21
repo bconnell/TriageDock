@@ -76,7 +76,17 @@ Set `NOTIFICATION_WEBHOOK_URL` to an HTTPS endpoint you control and restart the 
 
 ### Local hardening checks (without hosted CI)
 
-Run the [local validation gate](scripts/verify-local.ps1) using Windows PowerShell 5.1 after creating a repository-local `.venv` and installing the pinned backend dependencies, then running `npm ci` in `frontend`. It executes Python source parsing, README truth checks, Django checks and tests, TypeScript checks, frontend unit tests, and the UI build sequentially. No hosted GitHub Actions are required.
+Run the [local validation gate](scripts/verify-local.ps1) using Windows PowerShell 5.1. First create a repository-local Python environment and install the pinned dependencies. Install frontend dependencies separately so only one build tool runs at a time:
+
+```powershell
+py -3.13 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --cache-dir .cache\pip -r backend\requirements-dev.lock
+Push-Location frontend
+npm ci --cache ..\.cache\npm
+Pop-Location
+```
+
+Use local disk space and committed-memory checks before installing on constrained computers. Dependency caches, generated files and the virtual environment remain inside the repository and are ignored by Git. The local gate then runs the pinned backend and frontend checks in sequence. It executes Python source parsing, README truth checks, Django checks and tests, TypeScript checks, frontend unit tests, and the UI build sequentially. No hosted GitHub Actions are required.
 
 ```powershell
 .\scripts\verify-local.ps1

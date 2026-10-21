@@ -16,14 +16,9 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Isolated database did not start" }
     docker compose -p $project cp $full "db:/tmp/restore-check.dump"
     if ($LASTEXITCODE -ne 0) { throw "Could not copy backup to isolated database" }
-    $db = if ($env:POSTGRES_DB) { $env:POSTGRES_DB } else { "triagedock" }
-    $user = if ($env:POSTGRES_USER) { $env:POSTGRES_USER } else { "triagedock" }
-    if ($db -notmatch '^[a-zA-Z0-9_]+$' -or $user -notmatch '^[a-zA-Z0-9_]+$') {
-        throw "Database identifier must be alphanumeric or underscore"
-    }
-    docker compose -p $project exec -T db pg_restore --no-owner --no-acl -U $user -d $db "/tmp/restore-check.dump"
+    docker compose -p $project exec -T db sh -c 'pg_restore --no-owner --no-acl -U "$POSTGRES_USER" -d "$POSTGRES_DB" "/tmp/restore-check.dump"'
     if ($LASTEXITCODE -ne 0) { throw "Restore failed; isolated verification data retained for inspection" }
-    docker compose -p $project exec -T db psql -U $user -d $db -tAc "SELECT COUNT(*) FROM incidents_incident"
+    docker compose -p $project exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT COUNT(*) FROM incidents_incident"'
     if ($LASTEXITCODE -ne 0) { throw "Restored incident schema verification failed" }
     Write-Host "Isolated restore succeeded. Verification project: $project"
 } finally {

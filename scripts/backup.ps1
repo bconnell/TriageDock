@@ -13,13 +13,9 @@ $target = Join-Path $destination $name
 if (Test-Path $target) { throw "Refusing to overwrite existing backup" }
 Push-Location $root
 try {
-    $db = if ($env:POSTGRES_DB) { $env:POSTGRES_DB } else { "triagedock" }
-    $user = if ($env:POSTGRES_USER) { $env:POSTGRES_USER } else { "triagedock" }
-    if ($db -notmatch '^[a-zA-Z0-9_]+$' -or $user -notmatch '^[a-zA-Z0-9_]+$') {
-        throw "Database identifier must be alphanumeric or underscore"
-    }
     $containerPath = "/tmp/$name"
-    docker compose exec -T db pg_dump -U $user -d $db -Fc -f $containerPath
+    $dump = 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc -f "' + $containerPath + '"'
+    docker compose exec -T db sh -c $dump
     if ($LASTEXITCODE -ne 0) { throw "pg_dump failed. No successful backup claimed." }
     docker compose cp "db:$containerPath" $target
     if ($LASTEXITCODE -ne 0) { throw "Backup copy failed. No successful backup claimed." }
