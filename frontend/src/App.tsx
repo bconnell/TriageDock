@@ -45,7 +45,7 @@ function Login({ onSuccess }: { onSuccess: (session: Session) => void }) {
       <div className="login-accent" aria-hidden="true"><Activity size={148} strokeWidth={0.6} /></div>
       <form className="login-card" onSubmit={submit}>
         <div className="brand brand-login"><span className="brand-icon"><Activity size={22} /></span><span>Triage<span className="brand-muted">Dock</span></span></div>
-        <div className="login-overline"><ShieldCheck size={15} /> OPERATOR SIGN IN</div>
+        <div className="login-overline"><ShieldCheck size={15} /> WORKSPACE SIGN IN</div>
         <h1>Review alerts.<br/><span>Track incidents.</span></h1>
         <p>Sign in to review incidents and their history.</p>
         <label htmlFor="username">Username</label>
@@ -54,7 +54,7 @@ function Login({ onSuccess }: { onSuccess: (session: Session) => void }) {
         <input id="password" type="password" autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} required />
         {error && <div role="alert" className="inline-error">{error}</div>}
         <button disabled={busy} type="submit" className="button button-primary login-submit">{busy ? "Signing in…" : "Sign in to dashboard"} <ArrowUpRight size={18}/></button>
-        <div className="login-foot"><LockKeyhole size={14}/> Access is restricted to authorized operators</div>
+        <div className="login-foot"><LockKeyhole size={14}/> Access is restricted to authorized users</div>
       </form>
     </div>
   );
@@ -68,10 +68,10 @@ function StatCard({ title, value, subtitle, tone, icon }: { title: string; value
   </div>;
 }
 
-function DetailPane({ data, onClose, onAction, busy }: {
+function DetailPane({ data, onClose, onAction, busy, canManage }: {
   data: IncidentDetail; onClose: () => void;
   onAction: (action: "acknowledge" | "resolve") => Promise<void>;
-  busy: boolean;
+  busy: boolean; canManage: boolean;
 }) {
   const dialogRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -105,10 +105,11 @@ function DetailPane({ data, onClose, onAction, busy }: {
         <div><div className="section-label">EXTERNAL KEY</div><strong className="mono wrap-word">{data.external_key}</strong></div>
         <div><div className="section-label">LAST OBSERVED</div><strong>{formatTimestamp(data.last_seen_at)}</strong></div>
       </div>
-      {data.status !== "resolved" && <div className="detail-actions">
+      {canManage && data.status !== "resolved" && <div className="detail-actions">
         {data.status === "open" && <button className="button button-secondary" disabled={busy} onClick={() => void onAction("acknowledge")}><Check size={16}/> Acknowledge</button>}
         <button className="button button-primary" disabled={busy} onClick={() => void onAction("resolve")}><CheckCircle2 size={16}/> Resolve incident</button>
       </div>}
+      {!canManage && <p className="muted small" role="status">Read-only access. Incident changes require operator permission.</p>}
       <div className="detail-section">
         <div className="section-label">ACTIVITY HISTORY</div>
         {data.events_has_more && <p className="muted small" role="status">Showing the 50 most recent events. Older history is available through the paginated incident events API.</p>}
@@ -121,6 +122,7 @@ function DetailPane({ data, onClose, onAction, busy }: {
       </div>
       <div className="detail-section">
         <div className="section-label">NOTIFICATION DELIVERY</div>
+        {data.deliveries_has_more && <p className="muted small" role="status">Showing the 50 most recent delivery records.</p>}
         {data.deliveries.length === 0 ? <p className="muted small">No delivery attempts recorded for this incident. Outbound notifications require an HTTPS webhook configured on the server.</p> :
           data.deliveries.map(delivery => <div className="delivery-row" key={delivery.id}><span>{delivery.event_kind}</span><Pill kind={delivery.status} label={delivery.status} /><span className="muted small">{delivery.attempts} attempts</span></div>)}
       </div>
@@ -210,7 +212,7 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
       <div className="nav-item selected"><LayoutDashboard size={18}/> Overview <span className="nav-indicator"/></div>
       <div className="sidebar-bottom">
         <div className="system-status"><RefreshCw size={14}/> Checks for updates every 30 seconds</div>
-        <div className="account"><div className="avatar">{(session.username || "O").slice(0, 1).toUpperCase()}</div><div className="account-text"><strong>{session.username}</strong><span>Operator</span></div><button className="icon-button" aria-label="Sign out" title="Sign out" onClick={() => void logout()}><LogOut size={17}/></button></div>
+        <div className="account"><div className="avatar">{(session.username || "O").slice(0, 1).toUpperCase()}</div><div className="account-text"><strong>{session.username}</strong><span>{session.can_manage_incidents ? "Operator" : "Reader"}</span></div><button className="icon-button" aria-label="Sign out" title="Sign out" onClick={() => void logout()}><LogOut size={17}/></button></div>
       </div>
     </aside>
     <main className="main">
@@ -250,7 +252,7 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
         <footer className="page-foot"><span><Command size={15}/> TriageDock <span className="footer-dot">·</span> Incident intake and response</span><span><ArrowDownRight size={14}/> Data refreshes every 30 seconds</span></footer>
       </div>
     </main>
-    {detail && <DetailPane data={detail} onClose={closeDetail} onAction={action} busy={busy}/>}
+    {detail && <DetailPane data={detail} onClose={closeDetail} onAction={action} busy={busy} canManage={session.can_manage_incidents}/>}
   </div>;
 }
 
@@ -260,12 +262,12 @@ export default function App() {
   useEffect(() => {
     api.session().then(setSession).catch((reason: unknown) =>
       setError(reason instanceof ApiError ? reason.message : "Unable to connect to the server."));
-    const expired = () => setSession({ authenticated: false, username: null });
+    const expired = () => setSession({ authenticated: false, username: null, can_manage_incidents: false });
     window.addEventListener("triagedock:session-expired", expired);
     return () => window.removeEventListener("triagedock:session-expired", expired);
   }, []);
   if (!session) return <div className="startup"><div className="brand"><span className="brand-icon"><Activity size={20}/></span>TriageDock</div><p>{error || "Connecting to incident services…"}</p>{error && <button className="button button-secondary" onClick={() => window.location.reload()}>Retry connection</button>}</div>;
   return session.authenticated
-    ? <Dashboard session={session} onLogout={() => setSession({authenticated: false, username: null})}/>
+    ? <Dashboard session={session} onLogout={() => setSession({authenticated: false, username: null, can_manage_incidents: false})}/>
     : <Login onSuccess={setSession}/>;
 }

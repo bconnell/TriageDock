@@ -19,7 +19,8 @@ def _strong_secret(value, name, minimum=32):
 
 if not DEBUG:
     _strong_secret(SECRET_KEY, "DJANGO_SECRET_KEY")
-    _strong_secret(os.getenv("INGEST_API_KEY", ""), "INGEST_API_KEY")
+    if os.getenv("INGEST_SHARED_KEY_ENABLED", "1") == "1":
+        _strong_secret(os.getenv("INGEST_API_KEY", ""), "INGEST_API_KEY")
     if os.getenv("DATABASE_ENGINE", "postgresql") != "sqlite":
         _strong_secret(os.getenv("POSTGRES_PASSWORD", ""), "POSTGRES_PASSWORD", 16)
 

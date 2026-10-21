@@ -164,3 +164,9 @@ class IncidentApiTests(APITestCase):
             with self.assertRaises(ImproperlyConfigured):
                 validate_webhook_url(url)
         self.assertEqual(validate_webhook_url("https://alerts.example.test/x"), "alerts.example.test")
+
+    def test_operator_session_reports_authority(self):
+        self.client.force_authenticate(user=None)
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("session"))
+        self.assertTrue(response.json()["can_manage_incidents"])

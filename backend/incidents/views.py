@@ -29,6 +29,10 @@ def session_view(request):
     return JsonResponse({
         "authenticated": request.user.is_authenticated,
         "username": request.user.get_username() if request.user.is_authenticated else None,
+        "can_manage_incidents": (
+            request.user.has_perm("incidents.change_incident")
+            if request.user.is_authenticated else False
+        ),
     })
 
 
@@ -74,14 +78,18 @@ def login_view(request):
     login(request, user)
     cache.delete(_login_limit_key(request, username))
     cache.delete(_login_limit_key(request, "*"))
-    return JsonResponse({"authenticated": True, "username": user.get_username()})
+    return JsonResponse({
+        "authenticated": True,
+        "username": user.get_username(),
+        "can_manage_incidents": user.has_perm("incidents.change_incident"),
+    })
 
 
 @csrf_protect
 @require_POST
 def logout_view(request):
     logout(request)
-    return JsonResponse({"authenticated": False})
+    return JsonResponse({"authenticated": False, "can_manage_incidents": False})
 
 
 class IngestRateThrottle(SimpleRateThrottle):

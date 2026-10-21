@@ -26,7 +26,7 @@ export interface IncidentEvent {
 export interface Delivery {
   id: number;
   event_kind: string;
-  status: "pending" | "sent" | "failed";
+  status: "pending" | "processing" | "sent" | "failed";
   attempts: number;
   last_error: string;
   sent_at: string | null;
@@ -36,6 +36,7 @@ export interface IncidentDetail extends Incident {
   events: IncidentEvent[];
   events_has_more: boolean;
   deliveries: Delivery[];
+  deliveries_has_more: boolean;
 }
 
 export interface IncidentPage {
@@ -56,4 +57,5 @@ export interface Stats {
 export interface Session {
   authenticated: boolean;
   username: string | null;
+  can_manage_incidents: boolean;
 }

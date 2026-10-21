@@ -44,9 +44,12 @@ class IncidentDetailSerializer(IncidentSerializer):
     events = serializers.SerializerMethodField()
     events_has_more = serializers.SerializerMethodField()
     deliveries = serializers.SerializerMethodField()
+    deliveries_has_more = serializers.SerializerMethodField()
 
     class Meta(IncidentSerializer.Meta):
-        fields = IncidentSerializer.Meta.fields + ["events", "events_has_more", "deliveries"]
+        fields = IncidentSerializer.Meta.fields + [
+            "events", "events_has_more", "deliveries", "deliveries_has_more"
+        ]
 
     def get_events(self, obj):
         # Bound detail payload; full history remains available as paginated API.
@@ -57,5 +60,9 @@ class IncidentDetailSerializer(IncidentSerializer):
         return obj.events.count() > 50
 
     def get_deliveries(self, obj):
-        deliveries = NotificationDelivery.objects.filter(event__incident=obj).select_related("event")
+        deliveries = (NotificationDelivery.objects.filter(event__incident=obj)
+                      .select_related("event").order_by("-id")[:50])
         return DeliverySerializer(deliveries, many=True).data
+
+    def get_deliveries_has_more(self, obj):
+        return NotificationDelivery.objects.filter(event__incident=obj).count() > 50

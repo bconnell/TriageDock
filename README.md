@@ -12,7 +12,7 @@ The stack is **Python 3.13, Django 6.1, Django REST Framework, PostgreSQL, Redis
 
 *Actual browser screenshot captured by the CI walkthrough from a local Docker Compose environment using synthetic demo incidents. No production data.*
 
-The browser uses Django session authentication. All authenticated users can read incidents; only users granted incident-operator permission can acknowledge or resolve. The incident list supports search and filters by status and severity, with updates requested every 30 seconds while the page is visible. An alert with the same `source` and `external_key` increments the existing incident's occurrence count. A new report for a resolved incident reopens it. Repeated alerts cannot automatically reduce the severity of an active incident.
+The browser uses Django session authentication. All authenticated users can read incidents; only users granted incident-operator permission can acknowledge or resolve. The dashboard hides mutation controls for readers. The incident list supports search and filters by status and severity, with updates requested every 30 seconds while the page is visible. An alert with the same `source` and `external_key` increments the existing incident's occurrence count. A new report for a resolved incident reopens it. Repeated alerts cannot automatically reduce the severity of an active incident.
 
 ## Engineering decisions
 
