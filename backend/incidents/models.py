@@ -63,6 +63,7 @@ class IncidentEvent(models.Model):
 class NotificationDelivery(models.Model):
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
+        PROCESSING = "processing", "Processing"
         SENT = "sent", "Sent"
         FAILED = "failed", "Failed"
 
@@ -70,9 +71,12 @@ class NotificationDelivery(models.Model):
         IncidentEvent, related_name="delivery", on_delete=models.CASCADE
     )
     status = models.CharField(
-        max_length=8, choices=Status.choices, default=Status.PENDING
+        max_length=10, choices=Status.choices, default=Status.PENDING
     )
     attempts = models.PositiveSmallIntegerField(default=0)
+    payload = models.JSONField(default=dict)
+    claim_token = models.UUIDField(null=True, blank=True)
+    claim_expires_at = models.DateTimeField(null=True, blank=True)
     next_attempt_at = models.DateTimeField(default=timezone.now)
     last_error = models.CharField(max_length=300, blank=True, default="")
     sent_at = models.DateTimeField(null=True, blank=True)
@@ -81,3 +85,15 @@ class NotificationDelivery(models.Model):
         indexes = [
             models.Index(fields=["status", "next_attempt_at"], name="delivery_due_idx"),
         ]
+
+
+class IngestCredential(models.Model):
+    """A high-entropy credential scoped to one alert source."""
+    label = models.CharField(max_length=80, unique=True)
+    source = models.CharField(max_length=80)
+    key_digest = models.CharField(max_length=64, unique=True, editable=False)
+    created_at = models.DateTimeField(default=timezone.now)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return self.label

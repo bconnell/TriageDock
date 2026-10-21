@@ -29,7 +29,7 @@ It is a local-first incident workflow, not a hosted monitoring service or a pagi
 ## Explicit tradeoffs
 
 - Browser information refreshes every 30 seconds, rather than using push or WebSockets.
-- Every authenticated Django user is an operator. This is not a multi-tenant product.
+- Authenticated readers and permission-granted operators have separate responsibilities. This is not a multi-tenant product.
 - Incoming API keys authenticate the sender but do not sign the request body. Public exposure requires TLS and independent rate limits.
 - Notifications are best effort. They can be lost after retry exhaustion or delivered more than once. Consumers must deduplicate the `event_id`.
 - Local Compose does not establish external operational reliability, disaster recovery, or large-volume performance.
@@ -39,3 +39,13 @@ It is a local-first incident workflow, not a hosted monitoring service or a pagi
 The [CI workflow](../.github/workflows/ci.yml) runs a Django PostgreSQL test suite, frontend typecheck and unit tests, Python/npm vulnerability audits, container build and HTTP smoke test. Headless Chrome signs in using a synthetic test operator, inspects actual incidents, acknowledges and resolves one, and saves the [dashboard screenshot](screenshots/dashboard.webp).
 
 The screenshot shows the real CI interface with four synthetic alert records; it is not a design mockup. Independent human testing and deployment hardening are separate acceptance tasks.
+
+## Additional default-branch hardening (not yet tagged)
+
+- Read-only history in Django Admin and operator-only status changes.
+- Redis-backed sign-in and intake limits, strong secret validation, scoped API keys with revocation.
+- Recoverable Celery outbox claims with event-time payloads and rejected redirects.
+- Event pagination, monotonic severity for active incidents, database/queue/worker readiness, memory budgets, and keyboard focus management.
+- Local source/test gates and isolated backup/restore scripts.
+
+The previous v1.0.0 CI evidence does **not** prove this newer candidate. Follow the local gate and release contract before claiming test success or promoting it to production.

@@ -24,3 +24,7 @@ backend/templates/ui/index.html
 backend/static/ui/
 
 # Keep committed fixtures and migrations
+
+# Local backups and isolated dependency caches (never publish incident data)
+backups/
+.cache/

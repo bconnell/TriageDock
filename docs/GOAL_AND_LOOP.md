@@ -45,3 +45,15 @@ A successful CI proves build, tests and a **containerized smoke flow**. The Chro
 **Personal files and data safety:** Never delete, modify, rename, move or overwrite user documents, downloads, desktops, profiles, other repositories, credential stores, browser settings, or uncommitted changes. Work only inside TriageDock. Do not stage secret `.env` files.
 
 **System safety:** Do not modify host OS, registry, firewall, system services, startup items, global tooling, or unrelated installations. Docker Compose operates only on this project's services and named volume. Never use global prune/cleanup commands, force pushes, hard resets, or destructive blanket deletes. Branch changes are non-forced and must preserve main until the candidate is validated.
+
+## Hardening completion gates (current default branch)
+
+- **Vertical authorization:** Reader versus operator, Django Admin read-only history, login and ingest limits, scoped keys and revocation; prove denial and permission paths.
+- **Vertical delivery:** Immutable payload snapshot, crash-expiring claims, HTTP outside transactions, bounded attempts, redirect rejection and worker heartbeat; prove timeout/reclaim/duplicate semantics.
+- **Vertical recovery:** Isolated database dump and restore with explicit file safety; preserve original volumes and test data.
+- **Horizontal verification:** Python parsing, Django migration drift, backend regression tests, frontend typecheck/tests/build, Compose configuration, keyboard and responsive inspection, resource ceilings, truthful documentation, pinned dependencies.
+- **Exit criteria:** Every executed local gate records actual evidence for the exact commit. Do not infer a pass for an unavailable runner. Unexecuted tests are marked **not verified** and cannot be described as passed.
+
+**Personal file/data safety:** Only modify TriageDock source paths and explicitly designated `backups/` outputs; preserve other files, uncommitted changes and history. No deletion or overwrite of user-created data or backup artifacts.
+
+**System safety:** No OS, registry, security product, startup, services, firewall, browser profile or global development-tool changes. Validate free RAM and disk before heavy tasks. Use one build/test engine at a time, bounded Docker limits and controlled shutdown of project-owned services. Stop on resource uncertainty.
