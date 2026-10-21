@@ -43,6 +43,15 @@ def send_delivery(delivery_id: int) -> bool:
         ).first()
         if delivery is None:
             return False
+        if delivery.attempts >= MAX_ATTEMPTS:
+            delivery.status = NotificationDelivery.Status.FAILED
+            delivery.claim_token = None
+            delivery.claim_expires_at = None
+            delivery.last_error = "Claim expired after maximum delivery attempts"
+            delivery.save(update_fields=[
+                "status", "claim_token", "claim_expires_at", "last_error"
+            ])
+            return False
         claim = uuid.uuid4()
         delivery.status = NotificationDelivery.Status.PROCESSING
         delivery.claim_token = claim

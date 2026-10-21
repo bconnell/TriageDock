@@ -77,3 +77,14 @@ class DeliveryTests(TransactionTestCase):
         opener.return_value.open.side_effect = verify
         self.assertTrue(send_delivery(self.delivery.pk))
         self.assertEqual(seen, [False])
+
+    def test_expired_claim_never_exceeds_attempt_limit(self):
+        NotificationDelivery.objects.filter(pk=self.delivery.pk).update(
+            status="processing",
+            attempts=3,
+            claim_expires_at=timezone.now() - timedelta(seconds=1),
+        )
+        self.assertFalse(send_delivery(self.delivery.pk))
+        self.delivery.refresh_from_db()
+        self.assertEqual(self.delivery.status, "failed")
+        self.assertEqual(self.delivery.attempts, 3)
