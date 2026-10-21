@@ -36,7 +36,7 @@ It is a local-first incident workflow, not a hosted monitoring service or a pagi
 
 ## Verified evidence
 
-The [CI workflow](../.github/workflows/ci.yml) runs a Django PostgreSQL test suite, frontend typecheck and unit tests, Python/npm vulnerability audits, container build and HTTP smoke test. Headless Chrome signs in using a synthetic test operator, inspects actual incidents, acknowledges and resolves one, and saves the [dashboard screenshot](screenshots/dashboard.webp).
+The [CI configuration](../.github/workflows/ci.yml) specifies PostgreSQL-backed Django tests, frontend typechecking and unit tests, Python/npm dependency audits, a container build and a live HTTP smoke test. Its Selenium script is intended to sign in with a synthetic operator and exercise acknowledge/resolve interactions. These checks have not been rerun on the newer hardening candidate.
 
 The screenshot shows the real CI interface with four synthetic alert records; it is not a design mockup. Independent human testing and deployment hardening are separate acceptance tasks.
 

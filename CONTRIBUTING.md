@@ -20,6 +20,6 @@ Check the resolved versions and CI before merging. Lockfiles are source-controll
 
 **Safety:** Only modify files in this repository. Preserve untracked and uncommitted work. Never run blanket cleanup, destructive git commands, global tooling updates, or system/profile changes as a convenience. The local database volume contains user-created incidents: `docker compose down` preserves it, while `-v` deletes it and must not be used without explicit data-removal intent.
 
-## Local proof without hosted workflows
+## Local release proof
 
 Use `scripts/verify-local.ps1` with repository-local dependencies. Record exact commit SHA, Python/Django migrations, test results and frontend verification outputs. Do not silently skip failed or unavailable checks. Manual browser review, database restore verification and Docker runtime are separate gates; never infer them from `ast.parse` or a source grep. Treat all directories outside this repository as read-only. Keep builds sequential on resource-constrained hardware.

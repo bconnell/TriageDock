@@ -19,7 +19,7 @@ The committed npm and Python locks fix dependency resolution for reviewed builds
 
 ## Evidence boundaries
 
-Production deploys must use a managed TLS proxy, safe forwarded-header handling, TLS-only secure cookies, HSTS after HTTPS validation, strong unique secrets, and per-service network isolation. A configured outbound HTTPS host must not be internal; redirected webhook destinations are rejected. A production webhook requires an explicit hostname allowlist via `NOTIFICATION_WEBHOOK_ALLOWED_HOSTS`. Restrict DNS and network egress independently to defend against rebinding. DNS rebinding and unrestricted destination hostnames remain risks unless outbound egress is restricted by the deployment.
+Production deploys must use a managed TLS proxy, safe forwarded-header handling, TLS-only secure cookies, HSTS after HTTPS validation, strong unique secrets, and per-service network isolation. A configured outbound HTTPS host must not be internal; redirected webhook destinations are rejected. A production webhook requires an explicit hostname allowlist via `NOTIFICATION_WEBHOOK_ALLOWED_HOSTS`. Restrict outbound DNS and network egress independently; hostname validation alone does not prevent DNS rebinding.
 
 Admin pages do not permit editing or deleting stored incident events. That is **not** cryptographic tamper-evidence against database owners or superusers with shell/database access. Use database privileges, independent logs, and approved retention before relying on audit history for compliance.
 
