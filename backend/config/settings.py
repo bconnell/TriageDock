@@ -12,6 +12,17 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY") or (
 if not SECRET_KEY:
     raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set outside development")
 
+def _strong_secret(value, name, minimum=32):
+    if (not value or len(value) < minimum or len(set(value)) < 8
+            or value.lower().startswith(("replace-", "change-", "unsafe-", "example"))):
+        raise ImproperlyConfigured(f"{name} must be a unique, non-example secret of at least {minimum} characters")
+
+if not DEBUG:
+    _strong_secret(SECRET_KEY, "DJANGO_SECRET_KEY")
+    _strong_secret(os.getenv("INGEST_API_KEY", ""), "INGEST_API_KEY")
+    if os.getenv("DATABASE_ENGINE", "postgresql") != "sqlite":
+        _strong_secret(os.getenv("POSTGRES_PASSWORD", ""), "POSTGRES_PASSWORD", 16)
+
 ALLOWED_HOSTS = [
     item.strip() for item in os.getenv(
         "DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1"
@@ -24,6 +35,12 @@ CSRF_TRUSTED_ORIGINS = [
 CSRF_COOKIE_SECURE = os.getenv("SECURE_COOKIES", "0") == "1"
 SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE
 SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
+SECURE_REFERRER_POLICY = "same-origin"
+SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "0") == "1"
+SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "0"))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = os.getenv("SECURE_HSTS_SUBDOMAINS", "0") == "1"
 if os.getenv("TRUST_PROXY_SSL_HEADER", "0") == "1":
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -104,13 +121,24 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.UserRateThrottle",
         "rest_framework.throttling.AnonRateThrottle",
     ],
-    "DEFAULT_THROTTLE_RATES": {"user": "120/min", "anon": "30/min"},
+    "DEFAULT_THROTTLE_RATES": {"user": "120/min", "anon": "30/min", "ingest": "60/min"},
 }
+
+# Shared cache is required for limits across multiple Gunicorn worker processes.
+CACHES = {"default": {
+    "BACKEND": ("django.core.cache.backends.locmem.LocMemCache"
+                if DEBUG and os.getenv("DATABASE_ENGINE") == "sqlite" else
+                "django.core.cache.backends.redis.RedisCache"),
+    **({} if DEBUG and os.getenv("DATABASE_ENGINE") == "sqlite" else
+       {"LOCATION": os.getenv("REDIS_CACHE_URL", "redis://redis:6379/1")}),
+}}
+DATA_UPLOAD_MAX_MEMORY_SIZE = 65536
 
 INGEST_API_KEY = os.getenv("INGEST_API_KEY", "")
 NOTIFICATION_WEBHOOK_URL = os.getenv("NOTIFICATION_WEBHOOK_URL", "")
-if NOTIFICATION_WEBHOOK_URL and not NOTIFICATION_WEBHOOK_URL.startswith("https://"):
-    raise ImproperlyConfigured("NOTIFICATION_WEBHOOK_URL must use HTTPS")
+if NOTIFICATION_WEBHOOK_URL:
+    from incidents.webhook import validate_webhook_url
+    validate_webhook_url(NOTIFICATION_WEBHOOK_URL)
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
 CELERY_TASK_IGNORE_RESULT = True
 CELERY_TIMEZONE = "UTC"

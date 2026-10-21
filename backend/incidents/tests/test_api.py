@@ -2,6 +2,7 @@ import json
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group, Permission
 from django.test import override_settings
 from django.urls import reverse
 from rest_framework.test import APITestCase
@@ -23,6 +24,10 @@ class IncidentApiTests(APITestCase):
         self.user = get_user_model().objects.create_user(
             username="operator", password="usable-test-password"
         )
+        group, _ = Group.objects.get_or_create(name="incident-operators")
+        group.permissions.add(Permission.objects.get(codename="change_incident", content_type__app_label="incidents"))
+        self.user.groups.add(group)
+        self.user = get_user_model().objects.get(pk=self.user.pk)
 
     def ingest(self, payload=None, key="testing-key"):
         return self.client.post(

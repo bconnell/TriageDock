@@ -37,7 +37,11 @@ def ingest_alert(data: dict) -> tuple[Incident, bool]:
             incident.last_seen_at = now
             incident.title = data["title"]
             incident.description = data.get("description", "")
-            incident.severity = data["severity"]
+            # Active incidents cannot be downgraded by a repeat alert.
+            priority = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+            incident.severity = (data["severity"] if reopened or
+                                 priority[data["severity"]] > priority[incident.severity]
+                                 else incident.severity)
             update_fields = [
                 "occurrences", "last_seen_at", "title", "description", "severity"
             ]
@@ -56,7 +60,11 @@ def ingest_alert(data: dict) -> tuple[Incident, bool]:
         if settings.NOTIFICATION_WEBHOOK_URL and kind in {
             IncidentEvent.Kind.CREATED, IncidentEvent.Kind.REOPENED
         }:
-            NotificationDelivery.objects.create(event=event)
+            NotificationDelivery.objects.create(event=event, payload={
+                "event_id": event.pk, "kind": event.kind,
+                "incident_id": str(incident.pk), "title": incident.title,
+                "severity": incident.severity, "status": incident.status,
+            })
         return incident, created
 
 
