@@ -79,6 +79,7 @@ Run the [local validation gate](scripts/verify-local.ps1) using Windows PowerShe
 ```powershell
 py -3.13 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --cache-dir .cache\pip -r backend\requirements-dev.lock
+.\.venv\Scripts\python.exe -m pip install --cache-dir .cache\pip pip-audit==2.10.1
 Push-Location frontend
 npm ci --cache ..\.cache\npm
 Pop-Location
