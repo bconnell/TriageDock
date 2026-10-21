@@ -79,6 +79,7 @@ Run the [local validation gate](scripts/verify-local.ps1) using Windows PowerShe
 ```powershell
 py -3.13 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --cache-dir .cache\pip -r backend\requirements-dev.lock
+.\.venv\Scripts\python.exe -m pip install --cache-dir .cache\pip pip-audit==2.10.1
 Push-Location frontend
 npm ci --cache ..\.cache\npm
 Pop-Location
@@ -90,7 +91,7 @@ Use local disk space and committed-memory checks before installing on constraine
 .\scripts\verify-local.ps1
 ```
 
-The optional `-WithDocker` switch validates Compose configuration and available physical memory; it does not start containers automatically. For a live integration walkthrough, use the documented Docker Compose steps and manually test permissions, ingestion, notification failures, and keyboard navigation. **No local end-to-end success is claimed until these checks are run and their output recorded.**
+The optional `-WithDocker` switch validates Compose configuration and available physical memory; it does not start containers automatically. To run Django checks and tests against an isolated PostgreSQL and Redis Compose project, use `scripts/verify-compose.ps1 -ConfirmIsolatedRun` after reviewing the resource prerequisites. That script does not publish container ports or touch your normal application database. For a live integration walkthrough, use the documented Docker Compose steps and manually test permissions, ingestion, notification failures, and keyboard navigation. **No local end-to-end success is claimed until these checks are run and their output recorded.**
 
 ### Database safety
 
