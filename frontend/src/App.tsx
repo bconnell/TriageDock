@@ -111,6 +111,7 @@ function DetailPane({ data, onClose, onAction, busy }: {
       </div>}
       <div className="detail-section">
         <div className="section-label">ACTIVITY HISTORY</div>
+        {data.events_has_more && <p className="muted small" role="status">Showing the 50 most recent events. Older history is available through the paginated incident events API.</p>}
         <div className="timeline">
           {data.events.map(event => <div className="timeline-entry" key={event.id}>
             <div className="timeline-dot"/>

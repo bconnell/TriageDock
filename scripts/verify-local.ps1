@@ -8,6 +8,15 @@ $root = Split-Path -Parent $PSScriptRoot
 if (-not (Test-Path (Join-Path $root "backend\manage.py"))) { throw "Unexpected repository path" }
 $disk = Get-PSDrive -Name ((Get-Item $root).PSDrive.Name)
 if ($disk.Free -lt 2GB) { throw "Abort: less than 2 GB free on project drive" }
+$memory = Get-CimInstance Win32_PerfFormattedData_PerfOS_Memory
+$osMemory = Get-CimInstance Win32_OperatingSystem
+if ($null -eq $memory -or $null -eq $osMemory) { throw "Abort: memory budget cannot be measured safely" }
+if (([int64]$memory.CommitLimit - [int64]$memory.CommittedBytes) -lt 1073741824) {
+    throw "Abort: less than 1 GiB available commit budget"
+}
+if ([int64]$osMemory.FreePhysicalMemory -lt 1572864) {
+    throw "Abort: less than 1.5 GiB physical RAM available"
+}
 Push-Location $root
 try {
     git diff --check

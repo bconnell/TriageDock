@@ -57,3 +57,9 @@ class SessionTests(TestCase):
             data=json.dumps({"username": "operator", "password": "strong-test-password"}),
             content_type="application/json", HTTP_X_CSRFTOKEN=token)
         self.assertEqual(unlocked.status_code, 200)
+
+    def test_dashboard_security_headers(self):
+        response = self.client.get("/")
+        self.assertIn("Content-Security-Policy", response.headers)
+        self.assertIn("Permissions-Policy", response.headers)
+        self.assertIn("frame-ancestors 'none'", response["Content-Security-Policy"])
