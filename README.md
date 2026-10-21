@@ -12,7 +12,7 @@ The stack is **Python 3.13, Django 6.1, Django REST Framework, PostgreSQL, Redis
 
 *Actual browser screenshot captured by the CI walkthrough from a local Docker Compose environment using synthetic demo incidents. No production data.*
 
-The browser uses Django session authentication. The incident list supports search and filters by status and severity, with updates requested every 30 seconds while the page is open. An alert with the same `source` and `external_key` increments the existing incident's occurrence count. A new report for a resolved incident reopens it.
+The browser uses Django session authentication. All authenticated users can read incidents; only users granted incident-operator permission can acknowledge or resolve. The incident list supports search and filters by status and severity, with updates requested every 30 seconds while the page is visible. An alert with the same `source` and `external_key` increments the existing incident's occurrence count. A new report for a resolved incident reopens it. Repeated alerts cannot automatically reduce the severity of an active incident.
 
 ## Engineering decisions
 
@@ -24,6 +24,24 @@ The browser uses Django session authentication. The incident list supports searc
 See the [engineering walkthrough](docs/PROJECT_OVERVIEW.md) for the complete flow and verification details.
 
 ## Quick start (Docker Compose)
+
+### Operator access and alert credentials
+
+The application differentiates **readers** from **operators**. A signed-in reader can inspect incidents, but status changes require the Django `incidents.change_incident` permission. Superusers already have it. To grant it to an existing active user:
+
+```powershell
+docker compose exec web python manage.py grant_operator your-username
+```
+
+For independent monitors, generate a high-entropy source-scoped ingestion key (the token is printed once):
+
+```powershell
+docker compose exec web python manage.py create_ingest_credential --label host-one --source host-one
+```
+
+Store that key outside the repository and send it using `X-TriageDock-Key`. Revoke it with `docker compose exec web python manage.py revoke_ingest_credential host-one`. Source-scoped credentials cannot impersonate another source. The original environment key remains supported for existing integrations; set `INGEST_SHARED_KEY_ENABLED=0` after migrating to source-scoped keys to disable it.
+
+
 
 Requires Docker Engine + Compose plugin.
 
@@ -52,9 +70,25 @@ On Windows PowerShell, set `$env:INGEST_API_KEY` to the same value stored in you
 
 ### Optional HTTPS notification delivery
 
-Set `NOTIFICATION_WEBHOOK_URL` to an HTTPS endpoint you control and restart the Compose services. A newly created or reopened incident adds a notification record to PostgreSQL. Celery beat checks for pending deliveries every 15 seconds. The worker attempts an HTTP POST with a five second timeout and retries after 30 and 60 seconds, up to three attempts. The incident detail view shows delivery attempts and failures. Leave the URL empty to disable notifications. Delivery is not guaranteed; receivers must deduplicate repeated requests using `event_id`.
+Set `NOTIFICATION_WEBHOOK_URL` to an HTTPS endpoint you control and restart the Compose services. A newly created or reopened incident adds a notification record to PostgreSQL. Celery beat checks for pending deliveries every 15 seconds. The worker attempts an HTTP POST with a five second timeout and retries after 30 and 60 seconds, up to three attempts. The incident detail view shows delivery attempts and failures. A short database claim can be recovered after a worker crash; an immutable notification payload is recorded when the event is created. Leave the URL empty to disable notifications. Delivery is not guaranteed; receivers must deduplicate repeated requests using `event_id`.
 
 ## Local developer workflow
+
+### Local hardening checks (without hosted CI)
+
+Run the [local validation gate](scripts/verify-local.ps1) using Windows PowerShell 5.1 after creating a repository-local `.venv` and installing the pinned backend dependencies, then running `npm ci` in `frontend`. It executes Python source parsing, README truth checks, Django checks and tests, TypeScript checks, frontend unit tests, and the UI build sequentially. No hosted GitHub Actions are required.
+
+```powershell
+.\scripts\verify-local.ps1
+```
+
+The optional `-WithDocker` switch validates Compose configuration and available physical memory; it does not start containers automatically. For a live integration walkthrough, use the documented Docker Compose steps and manually test permissions, ingestion, notification failures, and keyboard navigation. **No local end-to-end success is claimed until these checks are run and their output recorded.**
+
+### Database safety
+
+The PostgreSQL volume retains incidents across `docker compose down`. Use `.\scripts\backup.ps1` to save a new custom-format dump inside the ignored `backups/` directory. Confirm that it can restore into an isolated project using `.\scripts\verify-backup.ps1 -Backup .\backups\your-backup.dump`. The script never overwrites the original database or removes the verification volume. Do not publish backups or use `docker compose down -v`.
+
+
 
 - Backend: use Python 3.13 and install `backend/requirements-dev.lock`. In your shell, set `DJANGO_DEBUG=1` and `DATABASE_ENGINE=sqlite` (on Windows PowerShell use `$env:DJANGO_DEBUG = '1'` and `$env:DATABASE_ENGINE = 'sqlite'`). From `backend/`, run `python manage.py migrate`, `python manage.py createsuperuser`, then `python manage.py runserver 127.0.0.1:8000`. SQLite is suitable for local development, but does not verify PostgreSQL concurrency behavior.
 - Frontend: from `frontend/`, run `npm ci` and `npm run dev`. Vite proxies `/api` to the Django server. Open **http://127.0.0.1:5173**.
@@ -92,10 +126,14 @@ Framework references: [Django authentication](https://docs.djangoproject.com/en/
 ## Scope and limitations
 
 - The default deployment is **local-only**. A public deployment needs managed TLS termination, secure cookies (`SECURE_COOKIES=1`), suitable `ALLOWED_HOSTS` and trusted origins, network edge rate limiting, secret management, monitoring, backups, and restore exercises.
-- Every authenticated Django user can access the operator API. There are no operator roles, per-incident permissions, tenant separation, SSO, escalation policies, SMS, or email paging.
+- All authenticated Django users can read incidents. Only granted operators can change incident status. There are no per-incident permissions, tenant separation, SSO, escalation policies, SMS, or email paging.
 - Notification delivery is best effort, with up to three attempts per event. An event can be delivered more than once, and a successful delivery is not guaranteed. The dispatcher processes at most 50 due rows per run; it is not designed for high-volume paging.
 - The frontend polls every 30 seconds; no WebSocket or instant push is claimed.
 - A small liveness endpoint does not prove database or queue readiness.
 - No credentials, customer data, or real alert endpoints should be committed to this repository.
 
 **License:** MIT. Copyright © 2026 Brandon Connell.
+
+## Hardening branch status
+
+The tagged [v1.0.0 release](https://github.com/bconnell/TriageDock/releases/tag/v1.0.0) remains available for reference. The default branch contains additional security, concurrency and accessibility changes intended for the next release. Code presence and source gates alone are not evidence of a complete local integration, load, backup-restore or human accessibility test; those require separate recorded results.

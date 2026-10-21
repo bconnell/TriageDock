@@ -25,3 +25,9 @@ The repository connector can edit source, branches, pull requests and merges, bu
 ## Evidence limitations
 
 CI smoke checks are real containerized HTTP tests. They are not a substitute for an interactive browser review, accessibility audit, performance study, or public deployment security assessment. Do not claim these as passed unless there is independent evidence.
+
+## Hardening candidate acceptance
+
+For any new tag, first execute `scripts/verify-local.ps1` on a suitably resourced development system using pinned dependencies and preserve its output. Perform an isolated Compose walkthrough and real PostgreSQL concurrency/delivery recovery tests. Run the backup-and-restore verification script using an operator-approved test backup. Confirm login abuse, scoped keys, permissions, keyboard-only navigation and reduced-width layout. Review memory consumption and ensure the work is serial.
+
+Merge policy is independent of release policy: source changes may be merged with explicitly documented unverified checks when the owner authorizes this, but **do not publish a new stable release** until all executable gates are green. The existing v1.0.0 tag must remain immutable.
