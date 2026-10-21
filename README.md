@@ -1,7 +1,5 @@
 # TriageDock
 
-[![CI](https://github.com/bconnell/TriageDock/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/bconnell/TriageDock/actions/workflows/ci.yml)
-
 **Receive monitoring alerts, track incidents, and record operator actions.**
 
 TriageDock accepts alerts from monitoring tools and groups repeated reports under the same incident. Operators can review the incident history, acknowledge incidents, and mark them resolved in a browser. An optional worker sends notifications to a configured HTTPS webhook.
@@ -12,7 +10,7 @@ The stack is **Python 3.13, Django 6.1, Django REST Framework, PostgreSQL, Redis
 
 *Actual browser screenshot captured by the CI walkthrough from a local Docker Compose environment using synthetic demo incidents. No production data.*
 
-The browser uses Django session authentication. All authenticated users can read incidents; only users granted incident-operator permission can acknowledge or resolve. The incident list supports search and filters by status and severity, with updates requested every 30 seconds while the page is visible. An alert with the same `source` and `external_key` increments the existing incident's occurrence count. A new report for a resolved incident reopens it. Repeated alerts cannot automatically reduce the severity of an active incident.
+The browser uses Django session authentication. All authenticated users can read incidents; only users granted incident-operator permission can acknowledge or resolve. The dashboard hides mutation controls for readers. The incident list supports search and filters by status and severity, with updates requested every 30 seconds while the page is visible. An alert with the same `source` and `external_key` increments the existing incident's occurrence count. A new report for a resolved incident reopens it. Repeated alerts cannot automatically reduce the severity of an active incident.
 
 ## Engineering decisions
 
@@ -74,7 +72,7 @@ Set `NOTIFICATION_WEBHOOK_URL` to an HTTPS endpoint you control and restart the 
 
 ## Local developer workflow
 
-### Local hardening checks (without hosted CI)
+### Local validation
 
 Run the [local validation gate](scripts/verify-local.ps1) using Windows PowerShell 5.1. First create a repository-local Python environment and install the pinned dependencies. Install frontend dependencies separately so only one build tool runs at a time:
 
@@ -86,7 +84,7 @@ npm ci --cache ..\.cache\npm
 Pop-Location
 ```
 
-Use local disk space and committed-memory checks before installing on constrained computers. Dependency caches, generated files and the virtual environment remain inside the repository and are ignored by Git. The local gate then runs the pinned backend and frontend checks in sequence. It executes Python source parsing, README truth checks, Django checks and tests, TypeScript checks, frontend unit tests, and the UI build sequentially. No hosted GitHub Actions are required.
+Use local disk space and committed-memory checks before installing on constrained computers. Dependency caches, generated files and the virtual environment remain inside the repository and are ignored by Git. The local gate then runs the pinned backend and frontend checks in sequence. It executes Python source parsing, README truth checks, Django checks and tests, TypeScript checks, frontend unit tests, and the UI build sequentially. The local gate operates independently of hosted workflows.
 
 ```powershell
 .\scripts\verify-local.ps1

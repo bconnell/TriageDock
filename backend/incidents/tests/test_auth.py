@@ -59,7 +59,27 @@ class SessionTests(TestCase):
         self.assertEqual(unlocked.status_code, 200)
 
     def test_dashboard_security_headers(self):
-        response = self.client.get("/")
+        # The Django test runner does not build the React UI template. Test the
+        # middleware contract directly; the browser smoke test covers the real page.
+        from config.security_headers import DashboardSecurityHeaders
+        from django.http import HttpResponse
+        from django.test import RequestFactory
+
+        middleware = DashboardSecurityHeaders(lambda _request: HttpResponse("ok"))
+        response = middleware(RequestFactory().get("/"))
         self.assertIn("Content-Security-Policy", response.headers)
         self.assertIn("Permissions-Policy", response.headers)
         self.assertIn("frame-ancestors 'none'", response["Content-Security-Policy"])
+
+    def test_reader_session_is_not_operator(self):
+        self.client.get(reverse("session"))
+        data = json.loads(self.client.get(reverse("session")).content)
+        self.assertFalse(data["can_manage_incidents"])
+        token = self.client.cookies["csrftoken"].value
+        response = self.client.post(
+            reverse("login"),
+            data=json.dumps({"username": "operator", "password": "strong-test-password"}),
+            content_type="application/json", HTTP_X_CSRFTOKEN=token,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(json.loads(response.content)["can_manage_incidents"])

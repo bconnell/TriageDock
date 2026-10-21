@@ -28,3 +28,6 @@ backend/static/ui/
 # Local backups and isolated dependency caches (never publish incident data)
 backups/
 .cache/
+
+# Machine-local release gate evidence. Never upload local paths or credentials.
+.validation/

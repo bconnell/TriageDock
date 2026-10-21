@@ -38,7 +38,7 @@ Inspect current candidate → identify the **first failing completion gate** →
 | Documentation | Runnable quick start, accurate API contract, limits, and failure behavior |
 | Safety | Writes exclusively inside this repository; no external file/profile/system modifications |
 
-A successful CI proves build, tests and a **containerized smoke flow**. The Chrome CI browser acceptance test exercises operator login, list, detail, acknowledgement and resolution on the real Compose deployment, with a screenshot from synthetic demo incidents. Human testing remains independent; this is not evidence of external production readiness.
+A successful run of the full CI workflow establishes its specific automated tests for the checked commit, not for later commits. The checked-in browser script covers login, incident listing, detail, acknowledgement and resolution in Compose with synthetic data. It must be executed on the target candidate before making a completion claim. Human testing remains separate.
 
 ## Explicit safety constraints
 

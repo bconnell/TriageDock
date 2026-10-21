@@ -17,8 +17,68 @@ if (([int64]$memory.CommitLimit - [int64]$memory.CommittedBytes) -lt 1073741824)
 if ([int64]$osMemory.FreePhysicalMemory -lt 1572864) {
     throw "Abort: less than 1.5 GiB physical RAM available"
 }
+# Release proof is for a clean, exact commit; do not modify a dirty worktree.
+$sha = (& git -C $root rev-parse HEAD).Trim()
+if ($LASTEXITCODE -ne 0 -or $sha -notmatch '^[0-9a-f]{40}
+    if ($LASTEXITCODE -ne 0) { throw "Git whitespace gate failed" }
+    python scripts/verify_source.py
+    if ($LASTEXITCODE -ne 0) { throw "Source gate failed" }
+    python scripts/check_public_copy.py
+    if ($LASTEXITCODE -ne 0) { throw "Documentation consistency gate failed" }
+
+    if (-not (Test-Path ".venv\Scripts\python.exe")) {
+        throw "Missing repo-local .venv. Create it and install backend/requirements-dev.lock first."
+    }
+    $py = Join-Path $root ".venv\Scripts\python.exe"
+    $env:DJANGO_DEBUG = "1"
+    $env:DATABASE_ENGINE = "sqlite"
+    & $py backend/manage.py check
+    if ($LASTEXITCODE -ne 0) { throw "Django checks failed" }
+    & $py backend/manage.py makemigrations --check --dry-run
+    if ($LASTEXITCODE -ne 0) { throw "Migration drift check failed" }
+    & $py backend/manage.py test incidents --verbosity 2
+    if ($LASTEXITCODE -ne 0) { throw "Django tests failed" }
+
+    Push-Location frontend
+    try {
+        if (-not (Test-Path node_modules)) { throw "Missing repo-local frontend node_modules; run npm ci." }
+        npm run typecheck
+        if ($LASTEXITCODE -ne 0) { throw "TypeScript gate failed" }
+        npm test
+        if ($LASTEXITCODE -ne 0) { throw "Frontend tests failed" }
+        npm run build
+        if ($LASTEXITCODE -ne 0) { throw "Frontend build failed" }
+    } finally { Pop-Location }
+
+    if ($WithDocker) {
+        $os = Get-CimInstance Win32_OperatingSystem
+        if ([int64]$os.FreePhysicalMemory -lt 2097152) { throw "Abort Docker gate: less than 2 GiB physical RAM available" }
+        docker compose config --quiet
+        if ($LASTEXITCODE -ne 0) { throw "Compose config gate failed" }
+        Write-Host "Docker config verified. Live Compose testing requires a separate, explicit manual run."
+    }
+    Write-Host "All requested local source/backend/frontend gates PASSED."
+} finally {
+    Pop-Location
+}
+) { throw "Cannot resolve exact source revision" }
+$changes = @(& git -C $root status --porcelain)
+if ($LASTEXITCODE -ne 0 -or $changes.Count -gt 0) {
+    throw "Release proof needs a clean worktree. Preserve and commit existing changes first."
+}
+$logDir = Join-Path $root ".validation"
+if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }
+$stamp = (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssfffZ")
+$log = Join-Path $logDir ("local-gates-" + $sha.Substring(0,12) + "-" + $stamp + ".txt")
+$startedTranscript = $false
+$originalDebug = $env:DJANGO_DEBUG
+$originalEngine = $env:DATABASE_ENGINE
 Push-Location $root
 try {
+    Start-Transcript -Path $log -ErrorAction Stop | Out-Null
+    $startedTranscript = $true
+    Write-Host "Exact candidate: $sha"
+    Write-Host "Local gate evidence: $log"
     git diff --check
     if ($LASTEXITCODE -ne 0) { throw "Git whitespace gate failed" }
     python scripts/verify_source.py
@@ -59,5 +119,10 @@ try {
     }
     Write-Host "All requested local source/backend/frontend gates PASSED."
 } finally {
+    if ($null -eq $originalDebug) { Remove-Item Env:DJANGO_DEBUG -ErrorAction SilentlyContinue }
+    else { $env:DJANGO_DEBUG = $originalDebug }
+    if ($null -eq $originalEngine) { Remove-Item Env:DATABASE_ENGINE -ErrorAction SilentlyContinue }
+    else { $env:DATABASE_ENGINE = $originalEngine }
+    if ($startedTranscript) { Stop-Transcript | Out-Null }
     Pop-Location
 }

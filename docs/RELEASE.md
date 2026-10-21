@@ -2,7 +2,7 @@
 
 ## Source identity
 
-Require the exact release commit to pass all checks in [CI](../.github/workflows/ci.yml). The independent `backend`, `frontend`, `docker`, and `security` jobs must be successful. Do not treat earlier runs or an updated dependency graph as equivalent evidence.
+For a release, require independently recorded success on the **exact release candidate**. Run the local source, backend, frontend, security and isolated Docker/browser gates, and record the commit SHA, commands, and results. The [hosted CI configuration](../.github/workflows/ci.yml) provides additional checks when executed; old green runs do not validate newer commits.
 
 ## Product acceptance
 
@@ -15,19 +15,23 @@ Require the exact release commit to pass all checks in [CI](../.github/workflows
 
 ## GitHub administration
 
-The repository connector can edit source, branches, pull requests and merges, but cannot edit the GitHub repository settings. Release publication uses an explicitly scoped GitHub Actions workflow instead. The owner should finish these settings in GitHub when available:
+The repository owner should enforce these GitHub protections and publication controls:
 
 - An active `main` ruleset requiring pull requests and the `backend`, `frontend`, `docker`, and `security` status checks.
 - Prevent forced updates/deletion and remove unnecessary always-allowed administrator bypasses. Avoid imposing approval requirements on a solo-maintainer repository without an available reviewer.
 - Repository description and topics reflecting the actual stack; optional image preview once manually checked.
-- The one-time release workflow creates `v1.0.0` only when all CI checks on the exact current `main` commit pass. If the release action is blocked by repository token policy, the owner must publish the verified commit manually. Do not retag another commit without an explicit release decision.
+- Preserve the existing `v1.0.0` tag. Publish a subsequent tag only for an independently validated exact commit, with honest release notes and a recoverable build.
 
 ## Evidence limitations
 
-CI smoke checks are real containerized HTTP tests. They are not a substitute for an interactive browser review, accessibility audit, performance study, or public deployment security assessment. Do not claim these as passed unless there is independent evidence.
+The v1.0.0 smoke and browser checks are historical evidence for that release only. The newer hardening commit needs its own executable evidence. No browser, accessibility, performance, disaster-recovery, or deployment results can be inferred from source inspection.
 
 ## Hardening candidate acceptance
 
 For any new tag, first execute `scripts/verify-local.ps1` on a suitably resourced development system using pinned dependencies and preserve its output. Perform an isolated Compose walkthrough and real PostgreSQL concurrency/delivery recovery tests. Run the backup-and-restore verification script using an operator-approved test backup. Confirm login abuse, scoped keys, permissions, keyboard-only navigation and reduced-width layout. Review memory consumption and ensure the work is serial.
 
 Merge policy is independent of release policy: source changes may be merged with explicitly documented unverified checks when the owner authorizes this, but **do not publish a new stable release** until all executable gates are green. The existing v1.0.0 tag must remain immutable.
+
+## Local evidence file
+
+`scripts/verify-local.ps1` verifies a **clean exact commit**. It writes a timestamped PowerShell transcript under the ignored `.validation/` directory in the repository and returns an error on the first failed gate. Save the report identifier and relevant pass/fail lines in the release review. Never publish raw local transcripts without reviewing them for machine paths or other private data. Restore the caller's environment variables and working directory when the gate finishes.

@@ -1,39 +1,15 @@
-name: Publish v1.0.0
+# The original first release is published and immutable.
+# New releases require exact-candidate manual verification before publication.
+name: Release acceptance
 on:
   workflow_dispatch:
-
 permissions:
-  contents: write
-
-concurrency:
-  group: triagedock-first-release
-  cancel-in-progress: false
-
+  contents: read
 jobs:
-  publish:
-    if: false # v1.0.0 is already published; retain historical workflow without republishing it.
+  explain:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-          persist-credentials: false
-      - name: Publish only the exact currently verified main revision
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERIFIED_SHA: ${{ github.event.workflow_run.head_sha }}
-        run: |
-          set -euo pipefail
-          current="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
-          if [ "$current" != "$VERIFIED_SHA" ]; then
-            echo "Default branch advanced; refusing to tag an unverified or stale candidate." >&2
-            exit 1
-          fi
-          if gh release view v1.0.0 >/dev/null 2>&1; then
-            echo "v1.0.0 already exists; leaving published release unchanged."
-            exit 0
-          fi
-          gh release create v1.0.0 --target "$VERIFIED_SHA" \
-            --title "TriageDock v1.0.0" \
-            --notes-file docs/RELEASE_NOTES.md
-          gh release view v1.0.0 --json tagName,targetCommitish,url
+      - run: |
+          echo "This workflow does not publish tags or releases."
+          echo "Record and review local/backend/frontend/Docker/browser evidence for the exact commit."
+          echo "Follow docs/RELEASE.md before publishing a new version."
