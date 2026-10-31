@@ -12,6 +12,7 @@ from pathlib import Path
 from PIL import Image
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
@@ -67,14 +68,32 @@ def main():
         wait.until(EC.text_to_be_present_in_element((By.CSS_SELECTOR, ".detail-pane .pills"), "Resolved"))
         assert len(driver.find_elements(By.CSS_SELECTOR, ".detail-actions")) == 0
         driver.find_element(By.CSS_SELECTOR, '[aria-label="Close incident details"]').click()
+        # Verify the dialog can be closed from the keyboard and focus returns.
+        trigger = driver.find_element(
+            By.CSS_SELECTOR, 'button[aria-label="Open Elevated gateway latency"]'
+        )
+        trigger.click()
+        wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, ".detail-pane")))
+        assert driver.switch_to.active_element.get_attribute("aria-label") == "Close incident details"
+        driver.switch_to.active_element.send_keys(Keys.ESCAPE)
+        wait.until(EC.invisibility_of_element_located((By.CSS_SELECTOR, ".detail-pane")))
+        assert driver.switch_to.active_element.get_attribute("aria-label") == "Open Elevated gateway latency"
+
+        # Use Chrome's viewport emulation so 320 CSS pixels is measured exactly,
+        # independent of the host window manager's minimum resize width.
         for width in (800, 375, 320):
-            driver.set_window_size(width, 850)
+            driver.execute_cdp_cmd("Emulation.setDeviceMetricsOverride", {
+                "width": width, "height": 850, "deviceScaleFactor": 1, "mobile": False
+            })
+            actual = driver.execute_script("return window.innerWidth")
+            assert actual == width, f"Viewport check invalid: {actual} instead of {width}"
             logout_button = driver.find_element(By.CSS_SELECTOR, ".top-logout")
             assert logout_button.is_displayed(), f"Sign-out control missing at width {width}"
             overflow = driver.execute_script(
                 "return document.documentElement.scrollWidth > window.innerWidth + 1"
             )
             assert not overflow, f"Page-level horizontal overflow at {width}px"
+        driver.execute_cdp_cmd("Emulation.clearDeviceMetricsOverride", {})
         print("Real browser login, list, detail, acknowledge, resolve and responsive sign-out passed", flush=True)
         print("Screenshot:", IMAGE.as_posix(), IMAGE.stat().st_size, "bytes", flush=True)
     finally:
