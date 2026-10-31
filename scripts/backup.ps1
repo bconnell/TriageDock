@@ -10,16 +10,32 @@ if ($disk.Free -lt 512MB) { throw "Abort: insufficient free disk space for datab
 $stamp = (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssfffZ")
 $name = "triagedock-$stamp.dump"
 $target = Join-Path $destination $name
-if (Test-Path $target) { throw "Refusing to overwrite existing backup" }
+$partial = Join-Path $destination ("." + $name + ".partial")
+if ((Test-Path $target) -or (Test-Path $partial)) {
+    throw "Refusing to overwrite an existing backup or partial backup"
+}
 Push-Location $root
 try {
     $containerPath = "/tmp/$name"
     $dump = 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc -f "' + $containerPath + '"'
     docker compose exec -T db sh -c $dump
     if ($LASTEXITCODE -ne 0) { throw "pg_dump failed. No successful backup claimed." }
-    docker compose cp "db:$containerPath" $target
-    if ($LASTEXITCODE -ne 0) { throw "Backup copy failed. No successful backup claimed." }
-    if ((Get-Item $target).Length -lt 100) { throw "Backup file unexpectedly small" }
-    Write-Host "Backup created: $target"
-    Write-Host "Validate it in an isolated database before relying on it."
+    # Inspect the newly created archive format before copying it. This does
+    # NOT establish successful restoration or completeness of the source data.
+    docker compose exec -T db pg_restore --list $containerPath | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "pg_restore could not read the archive manifest" }
+    docker compose cp "db:$containerPath" $partial
+    if ($LASTEXITCODE -ne 0) { throw "Backup copy failed; incomplete file retained for inspection" }
+    if ((Get-Item $partial).Length -lt 100) { throw "Backup copy unexpectedly small; not finalized" }
+    Move-Item -LiteralPath $partial -Destination $target -ErrorAction Stop
+    $digest = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash
+    Write-Host "Backup copied: $target"
+    Write-Host "SHA256: $digest"
+    Write-Host "Unverified until restored into an isolated database and inspected."
+    # Remove only the invocation's own temporary container archive after the
+    # host backup is finalized. Never remove a user-supplied path or volume.
+    docker compose exec -T db rm -- $containerPath
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Temporary archive remains in the database container: $containerPath"
+    }
 } finally { Pop-Location }

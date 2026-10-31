@@ -39,3 +39,7 @@ Merge policy is independent of release policy: source changes may be merged with
 ## Isolated database/Redis verification
 
 `scripts/verify-compose.ps1 -ConfirmIsolatedRun` runs the Django suite against a uniquely named, local PostgreSQL/Redis Compose project without publishing network ports. It checks measured memory and disk headroom, uses one build at a time, and keeps an ignored exact-commit transcript. It stops only project-owned containers and **preserves** the isolated volume. This proves database-backed tests only when actually executed; it does not prove browser interactions, live worker delivery, or backup recovery.
+
+## Backup evidence policy
+
+A successful `pg_dump` or `pg_restore --list` verifies only that a dump command produced a readable archive manifest. The backup script first copies to an ignored `.partial` file, then finalizes it and reports a SHA256 digest without overwriting existing backups. A failed copy retains the partial artifact for inspection; no original database volume is altered. Only an isolated `verify-backup.ps1` restoration and data checks support a claim of recoverability. Raw backup files and test transcripts may contain private information and must never be committed or published.

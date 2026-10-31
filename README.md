@@ -97,7 +97,7 @@ The optional `-WithDocker` switch validates Compose configuration and available 
 
 **Before updating an installation that already contains incidents, run a backup and verify it restores before starting the new containers or applying migrations.**
 
-The PostgreSQL volume retains incidents across `docker compose down`. Use `.\scripts\backup.ps1` to save a new custom-format dump inside the ignored `backups/` directory. Confirm that it can restore into an isolated project using `.\scripts\verify-backup.ps1 -Backup .\backups\your-backup.dump`. The script never overwrites the original database or removes the verification volume. Do not publish backups or use `docker compose down -v`.
+The PostgreSQL volume retains incidents across `docker compose down`. Use `.\scripts\backup.ps1` to copy a new custom-format dump inside the ignored `backups/` directory. The script checks the archive manifest, stages the download as a partial file, finalizes it without overwriting any previous backup, and prints its SHA256 checksum. It does not claim the data is recoverable until a restore succeeds. Confirm that it can restore into an isolated project using `.\scripts\verify-backup.ps1 -Backup .\backups\your-backup.dump`. The script never overwrites the original database or removes the verification volume. Do not publish backups or use `docker compose down -v`.
 
 
 
