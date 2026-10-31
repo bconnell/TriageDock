@@ -3,6 +3,7 @@ import hashlib
 import json
 import secrets
 from django.core.cache import cache
+from django.core.exceptions import RequestDataTooBig
 
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
@@ -136,6 +137,13 @@ class AlertIngestView(APIView):
         )
         if credential is None and not shared_ok:
             return Response({"detail": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+        # Access Django's guarded raw body BEFORE DRF streams JSON. This applies
+        # DATA_UPLOAD_MAX_MEMORY_SIZE even on parsers that read request streams.
+        try:
+            _ = request._request.body
+        except RequestDataTooBig:
+            return Response({"detail": "Alert body too large"},
+                            status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE)
         serializer = IncomingAlertSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         if credential is not None and credential.source != serializer.validated_data["source"]:
