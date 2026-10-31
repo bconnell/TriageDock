@@ -15,6 +15,11 @@ def main() -> None:
     readme = read("README.md")
     contract = read("docs/API.md")
     plan = read("docs/GOAL_AND_LOOP.md")
+    delivery = read("backend/incidents/tasks.py")
+    workflow = read(".github/workflows/ci.yml")
+    release = read("docs/RELEASE.md")
+    ledger = read("docs/EVIDENCE.md")
+    security = read("SECURITY.md")
     dashboard = read("frontend/src/App.tsx")
     api = read("backend/incidents/views.py")
     snippets = [readme, contract, plan, dashboard]
@@ -43,6 +48,16 @@ def main() -> None:
     assert 'request.headers.get("X-TriageDock-Key"' in api
     assert "not a cryptographic payload signature" in contract
     assert "not cryptographically signed" in plan
+    assert "MAX_DUE_PER_TICK = 2" in delivery
+    assert "at most 2 due rows per run" in readme
+    assert "snapshotted when the event is recorded" in contract
+    if "workflow_dispatch:" in workflow:
+        for name, content in (("README", readme), ("SECURITY", security), ("RELEASE", release)):
+            if "CI runs PostgreSQL-backed" in content or "browser CI repeats the interaction path on changes" in content:
+                raise AssertionError(f"{name} claims automatic validation, but CI is manual-only")
+    assert "current hardening source has not passed those hosted checks" in readme
+    assert "have **not** been executed successfully" in ledger
+    assert "No stable release or production-readiness claim is authorized" in ledger
 
     for target in ("docs/API.md", "docs/GOAL_AND_LOOP.md"):
         if not (ROOT / target).is_file():

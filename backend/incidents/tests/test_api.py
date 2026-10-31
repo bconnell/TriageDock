@@ -170,3 +170,9 @@ class IncidentApiTests(APITestCase):
         self.client.force_login(self.user)
         response = self.client.get(reverse("session"))
         self.assertTrue(response.json()["can_manage_incidents"])
+
+    def test_alert_body_over_limit_does_not_create_incident(self):
+        oversized = {**ALERT, "description": "x" * 70000}
+        response = self.ingest(oversized)
+        self.assertEqual(response.status_code, 413)
+        self.assertEqual(Incident.objects.count(), 0)

@@ -3,6 +3,7 @@ import hashlib
 import json
 import secrets
 from django.core.cache import cache
+from django.core.exceptions import RequestDataTooBig
 
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
@@ -42,11 +43,16 @@ def _login_limit_key(request, username):
     return f"triagedock:login:{identity}"
 
 
-def _too_many_logins(key):
-    # Redis increment is atomic. Treat cache outages as an error, not a bypass.
-    if cache.add(key, 1, timeout=900):
-        return False
-    return cache.incr(key) > 5
+def _login_failures(key):
+    # Shared Redis cache is mandatory in the deployed application.
+    # Read the number of FAILED attempts; successful logins do not spend quota.
+    return int(cache.get(key, 0))
+
+
+def _record_login_failure(key):
+    # An atomic add or increment keeps a fixed 15-minute failure window.
+    if not cache.add(key, 1, timeout=900):
+        cache.incr(key)
 
 
 @csrf_protect
@@ -60,13 +66,14 @@ def login_view(request):
         return JsonResponse({"detail": "Invalid JSON object"}, status=400)
     username = data.get("username", "")
     password = data.get("password", "")
-    if not isinstance(username, str) or not isinstance(password, str):
+    if (not isinstance(username, str) or not isinstance(password, str)
+            or not 1 <= len(username) <= 150 or len(password) > 1024):
         return JsonResponse({"detail": "Invalid credentials"}, status=400)
+    user_key = _login_limit_key(request, username)
+    address_key = _login_limit_key(request, "*")
     try:
-        # Also prevent attackers from generating unlimited passwords for one username.
-        limited_user = _too_many_logins(_login_limit_key(request, username))
-        limited_ip = _too_many_logins(_login_limit_key(request, "*"))
-        if limited_user or limited_ip:
+        if (_login_failures(user_key) >= 5 or
+                _login_failures(address_key) >= 5):
             response = JsonResponse({"detail": "Too many sign-in attempts. Try later."}, status=429)
             response["Retry-After"] = "900"
             return response
@@ -74,10 +81,20 @@ def login_view(request):
         return JsonResponse({"detail": "Sign-in is temporarily unavailable"}, status=503)
     user = authenticate(request, username=username, password=password)
     if user is None:
+        try:
+            _record_login_failure(user_key)
+            _record_login_failure(address_key)
+        except Exception:
+            # A cache outage must not permit an unlimited password-guessing path.
+            return JsonResponse({"detail": "Sign-in is temporarily unavailable"}, status=503)
         return JsonResponse({"detail": "Invalid username or password"}, status=401)
+    try:
+        # A valid sign-in may clear this account's failures; the address-wide
+        # budget is intentionally NOT cleared, preventing credential-stuffing bypass.
+        cache.delete(user_key)
+    except Exception:
+        return JsonResponse({"detail": "Sign-in is temporarily unavailable"}, status=503)
     login(request, user)
-    cache.delete(_login_limit_key(request, username))
-    cache.delete(_login_limit_key(request, "*"))
     return JsonResponse({
         "authenticated": True,
         "username": user.get_username(),
@@ -120,6 +137,13 @@ class AlertIngestView(APIView):
         )
         if credential is None and not shared_ok:
             return Response({"detail": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+        # Access Django's guarded raw body BEFORE DRF streams JSON. This applies
+        # DATA_UPLOAD_MAX_MEMORY_SIZE even on parsers that read request streams.
+        try:
+            _ = request._request.body
+        except RequestDataTooBig:
+            return Response({"detail": "Alert body too large"},
+                            status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE)
         serializer = IncomingAlertSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         if credential is not None and credential.source != serializer.validated_data["source"]:

@@ -9,13 +9,13 @@ If you discover a security issue, use GitHub's **Report a vulnerability** option
 - Set unique secrets in a local `.env`; never commit it.
 - External deployments require HTTPS, secure cookies, approved hosts and trusted origins, edge rate limiting, database backup/restore, and a dedicated secret manager.
 - Readers can inspect incidents; only users granted `incidents.change_incident` can acknowledge or resolve. There is no per-incident authorization or multi-tenant isolation.
-- The alert API uses a bearer-style API key in `X-TriageDock-Key`. It is **not** a cryptographic signature. A Redis-backed application throttle provides bounded abuse protection, not network-edge DDoS protection. Source-scoped keys can be revoked, and the legacy shared key can be disabled with `INGEST_SHARED_KEY_ENABLED=0`. In that mode no legacy shared key is required; source-scoped keys are managed through Django commands.
-- Outgoing HTTPS webhooks are optional. Delivery is best effort with bounded retries and possible duplicates; receivers must deduplicate `event_id`.
+- The alert API uses a bearer-style API key in `X-TriageDock-Key`. It is **not** a cryptographic signature. A Redis-backed application throttle and explicit guarded-body read provide bounded abuse protection, not network-edge DDoS protection. Source-scoped keys can be revoked, and the legacy shared key can be disabled with `INGEST_SHARED_KEY_ENABLED=0`. In that mode no legacy shared key is required; source-scoped keys are managed through Django commands.
+- Outgoing HTTPS webhooks are optional. Delivery is best effort with bounded retries and possible duplicates; receivers must deduplicate `event_id`. For message authenticity, configure an independent `NOTIFICATION_WEBHOOK_SECRET` and verify the signed timestamp and exact raw JSON bytes at the receiver. Unsigned legacy delivery remains available, but has no authenticated payload guarantee.
 - The `/health/` endpoint is a liveness response, not proof of database, Redis, or worker health.
 
 ## Dependency maintenance
 
-The committed npm and Python locks fix dependency resolution for reviewed builds. Dependabot submits updates; update both the direct input and the corresponding lock before merging. CI rejects install errors and audits available vulnerability advisories. An audit result is a point-in-time check, not an assurance that no vulnerabilities exist.
+The committed npm and Python locks fix dependency resolution for reviewed builds. Dependabot submits updates; update both the direct input and the corresponding lock before merging. The workflow is configured to reject install errors and audit available vulnerability advisories when run. An audit result is a point-in-time check, not an assurance that no vulnerabilities exist.
 
 ## Evidence boundaries
 

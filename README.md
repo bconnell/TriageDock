@@ -68,7 +68,7 @@ On Windows PowerShell, set `$env:INGEST_API_KEY` to the same value stored in you
 
 ### Optional HTTPS notification delivery
 
-Set `NOTIFICATION_WEBHOOK_URL` to an HTTPS endpoint you control and restart the Compose services. A newly created or reopened incident adds a notification record to PostgreSQL. Celery beat checks for pending deliveries every 15 seconds. The worker attempts an HTTP POST with a five second timeout and retries after 30 and 60 seconds, up to three attempts. The incident detail view shows delivery attempts and failures. A short database claim can be recovered after a worker crash; an immutable notification payload is recorded when the event is created. Leave the URL empty to disable notifications. Delivery is not guaranteed; receivers must deduplicate repeated requests using `event_id`.
+Set `NOTIFICATION_WEBHOOK_URL` to an HTTPS endpoint you control and restart the Compose services. A newly created or reopened incident adds a notification record to PostgreSQL. Celery beat checks for pending deliveries every 15 seconds. The worker attempts an HTTP POST with a five second timeout and retries after 30 and 60 seconds, up to three attempts. It handles at most two due deliveries every 15 seconds to bound queued work when receivers are slow. The incident detail view shows delivery attempts and failures. A short database claim can be recovered after a worker crash; a notification payload snapshot is recorded when the event is created. Leave the URL empty to disable notifications. Delivery is not guaranteed; receivers must deduplicate repeated requests using `event_id`. An optional independent `NOTIFICATION_WEBHOOK_SECRET` signs outgoing messages using HMAC-SHA256 over `timestamp + "." + raw JSON body`, with `X-TriageDock-Timestamp` and `X-TriageDock-Signature: sha256=<hex>` headers. Receivers should reject expired timestamps and compare signatures in constant time. When the secret is unset, no signature is sent.
 
 ## Local developer workflow
 
@@ -97,7 +97,7 @@ The optional `-WithDocker` switch validates Compose configuration and available 
 
 **Before updating an installation that already contains incidents, run a backup and verify it restores before starting the new containers or applying migrations.**
 
-The PostgreSQL volume retains incidents across `docker compose down`. Use `.\scripts\backup.ps1` to save a new custom-format dump inside the ignored `backups/` directory. Confirm that it can restore into an isolated project using `.\scripts\verify-backup.ps1 -Backup .\backups\your-backup.dump`. The script never overwrites the original database or removes the verification volume. Do not publish backups or use `docker compose down -v`.
+The PostgreSQL volume retains incidents across `docker compose down`. Use `.\scripts\backup.ps1` to copy a new custom-format dump inside the ignored `backups/` directory. The script checks the archive manifest, stages the download as a partial file, compares its SHA256 checksum against the database container's original archive, then finalizes it without overwriting any previous backup. It does not claim the data is recoverable until a restore succeeds. Confirm that it can restore into an isolated project using `.\scripts\verify-backup.ps1 -Backup .\backups\your-backup.dump`. The script never overwrites the original database or removes the verification volume. Do not publish backups or use `docker compose down -v`.
 
 
 
@@ -105,7 +105,7 @@ The PostgreSQL volume retains incidents across `docker compose down`. Use `.\scr
 - Frontend: from `frontend/`, run `npm ci` and `npm run dev`. Vite proxies `/api` to the Django server. Open **http://127.0.0.1:5173**.
 - Backend checks: `python manage.py check`, `python manage.py makemigrations --check --dry-run`, `python manage.py test incidents`.
 - Frontend checks: `npm run typecheck`, `npm test`, `npm run build`.
-- CI runs PostgreSQL-backed Django tests, TypeScript tests and compilation, dependency vulnerability audits, a production Docker build, and a live Compose HTTP smoke test. Python and npm dependency versions are recorded in committed lockfiles.
+- The manually triggered CI workflow defines PostgreSQL-backed Django tests, frontend checks, dependency vulnerability audits, a production Docker build and a Compose HTTP/browser smoke test. The current hardening source has not passed those hosted checks. Python and npm dependency versions are recorded in committed lockfiles.
 
 ## Architecture
 
@@ -128,6 +128,8 @@ Authentication and CSRF are provided by Django. No public account registration e
 - [API endpoints and authentication](docs/API.md)
 - [Development scope and verification](docs/GOAL_AND_LOOP.md)
 - [Release acceptance and GitHub settings](docs/RELEASE.md)
+- [Verification evidence and outstanding acceptance](docs/EVIDENCE.md)
+- [Privacy, legal and third-party dependency scope](docs/COMPLIANCE_SCOPE.md)
 - [Security policy](SECURITY.md)
 - [First release notes](docs/RELEASE_NOTES.md)
 - [Contributing](CONTRIBUTING.md)
@@ -138,7 +140,7 @@ Framework references: [Django authentication](https://docs.djangoproject.com/en/
 
 - The default deployment is **local-only**. A public deployment needs managed TLS termination, secure cookies (`SECURE_COOKIES=1`), suitable `ALLOWED_HOSTS` and trusted origins, network edge rate limiting, secret management, monitoring, backups, and restore exercises.
 - All authenticated Django users can read incidents. Only granted operators can change incident status. There are no per-incident permissions, tenant separation, SSO, escalation policies, SMS, or email paging.
-- Notification delivery is best effort, with up to three attempts per event. An event can be delivered more than once, and a successful delivery is not guaranteed. The dispatcher processes at most 8 due rows per run; it is not designed for high-volume paging.
+- Notification delivery is best effort, with up to three attempts per event. An event can be delivered more than once, and a successful delivery is not guaranteed. The dispatcher processes at most 2 due rows per run; it is not designed for high-volume paging.
 - The frontend polls every 30 seconds; no WebSocket or instant push is claimed.
 - A small liveness endpoint does not prove database or queue readiness.
 - No credentials, customer data, or real alert endpoints should be committed to this repository.

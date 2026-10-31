@@ -30,7 +30,7 @@ Webhook body:
 }
 ```
 
-`source` (80 chars), `external_key` (160), `title` (200), `severity` (low/medium/high/critical) required. `description` optional, max 4000. Identity is SHA256 of length-prefixed source and external key. These strings are case-sensitive; callers must keep them stable. Further alerts with the same identity return HTTP 200 and increment occurrences, even when their titles, severities, or descriptions change. The first alert for a new identity returns HTTP 201. Repeating resolved identities reopens them. Missing/wrong intake key yields 401. Invalid payloads yield 400. Alert intake authenticates callers with either the configured shared key or a source-scoped credential, not a cryptographic payload signature. Source-scoped credentials must match the request's `source`; revoked credentials return HTTP 401. Set `INGEST_SHARED_KEY_ENABLED=0` after migrating all senders to scoped keys. The API rate limit is 60 requests per minute per remote address regardless of submitted key, with an additional edge limit needed if externally reachable. This is a loopback-only development deployment. Before allowing external traffic, configure TLS and appropriate edge rate limits.
+`source` (80 chars), `external_key` (160), `title` (200), `severity` (low/medium/high/critical) required. `description` optional, max 4000. Identity is SHA256 of length-prefixed source and external key. These strings are case-sensitive; callers must keep them stable. Further alerts with the same identity return HTTP 200 and increment occurrences, even when their titles, severities, or descriptions change. The first alert for a new identity returns HTTP 201. Repeating resolved identities reopens them. Missing/wrong intake key yields 401. Invalid payloads yield 400. Alert bodies larger than the configured 64 KiB request limit receive HTTP 413 before DRF JSON parsing. Alert intake authenticates callers with either the configured shared key or a source-scoped credential, not a cryptographic payload signature. Source-scoped credentials must match the request's `source`; revoked credentials return HTTP 401. Set `INGEST_SHARED_KEY_ENABLED=0` after migrating all senders to scoped keys. The API rate limit is 60 requests per minute per remote address regardless of submitted key, with an additional edge limit needed if externally reachable. This is a loopback-only development deployment. Before allowing external traffic, configure TLS and appropriate edge rate limits.
 
 Delivery payload (only when `NOTIFICATION_WEBHOOK_URL` is configured):
 ```json
@@ -43,7 +43,7 @@ Delivery payload (only when `NOTIFICATION_WEBHOOK_URL` is configured):
   "status": "open"
 }
 ```
-Consumers **must deduplicate by `event_id`**. A worker can successfully deliver a notification and crash before the database commits its success, resulting in a repeated HTTP delivery. The `status` value reflects the incident when the worker sends the request, which may be different from the status when the event was recorded.
+Consumers **must deduplicate by `event_id`**. A worker can successfully deliver a notification and crash before the database commits its success, resulting in a repeated HTTP delivery. The `status`, `severity`, and `title` values are snapshotted when the event is recorded. The incident may have changed by the time the worker sends the request.
 
 ### Operator authorization and abuse handling
 
@@ -54,3 +54,7 @@ All signed-in users can read incidents; status mutation requires `incidents.chan
 Repeated alerts increase occurrence counts and preserve the highest severity while an incident remains active. A newly received alert for a resolved incident starts a new open cycle with the incoming severity. The `/health/` response is liveness only. `/ready/` reports PostgreSQL, Redis cache and a recently observed Celery worker heartbeat; it returns HTTP 503 if any check fails.
 
 The detail response carries no more than the 50 most recent events, with `events_has_more`. Notification deliveries are also capped at 50 per detail response, with `deliveries_has_more`. For complete immutable API-managed history use the paginated events route. Django Admin is read-only for incidents, history and delivery records. A database owner with direct SQL access can still change data; database-level tamper-proof audit storage is outside this application.
+
+### Optional delivery signature
+
+When `NOTIFICATION_WEBHOOK_SECRET` is set, each outbound POST includes `X-TriageDock-Timestamp` (Unix seconds) and `X-TriageDock-Signature` in the format `sha256=<lowercase hex>`. The MAC is HMAC-SHA256 over the ASCII timestamp, one literal period, and the exact raw HTTP request body. Use a separate random secret of at least 32 characters. Receivers should reject stale timestamps, compare the expected digest using a constant-time comparison, and deduplicate by `event_id`. A retry signs the same event payload with a new send timestamp. Without a configured secret, delivery is unsigned; HTTPS alone does not authenticate which application sent the request to the receiving service.

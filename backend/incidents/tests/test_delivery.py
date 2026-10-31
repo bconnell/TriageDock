@@ -88,3 +88,51 @@ class DeliveryTests(TransactionTestCase):
         self.delivery.refresh_from_db()
         self.assertEqual(self.delivery.status, "failed")
         self.assertEqual(self.delivery.attempts, 3)
+
+    @patch("incidents.tasks.urllib.request.build_opener")
+    def test_dispatch_batch_is_bounded_without_losing_due_rows(self, opener):
+        opener.return_value.open.return_value.__enter__.return_value = MagicMock(status=204)
+        for key in ("host-2", "host-3"):
+            ingest_alert({**ALERT, "external_key": key})
+        self.assertEqual(NotificationDelivery.objects.count(), 3)
+        self.assertEqual(process_due_deliveries(), 2)
+        self.assertEqual(NotificationDelivery.objects.filter(status="sent").count(), 2)
+        self.assertEqual(NotificationDelivery.objects.filter(status="pending").count(), 1)
+        self.assertEqual(process_due_deliveries(), 1)
+        self.assertEqual(NotificationDelivery.objects.filter(status="sent").count(), 3)
+
+    @override_settings(NOTIFICATION_WEBHOOK_SECRET="a-test-only-long-independent-signing-secret-2026")
+    @patch("incidents.tasks.time.time", return_value=1750000000)
+    @patch("incidents.tasks.urllib.request.build_opener")
+    def test_notification_signature_covers_timestamp_and_exact_body(self, opener, _clock):
+        import hashlib
+        import hmac
+
+        opener.return_value.open.return_value.__enter__.return_value = MagicMock(status=204)
+        self.assertTrue(send_delivery(self.delivery.pk))
+        request = opener.return_value.open.call_args.args[0]
+        timestamp = request.get_header("X-triagedock-timestamp")
+        signature = request.get_header("X-triagedock-signature")
+        self.assertEqual(timestamp, "1750000000")
+        secret = "a-test-only-long-independent-signing-secret-2026"
+        expected = hmac.new(secret.encode(),
+                            timestamp.encode() + b"." + request.data,
+                            hashlib.sha256).hexdigest()
+        self.assertEqual(signature, "sha256=" + expected)
+
+    @override_settings(NOTIFICATION_WEBHOOK_SECRET="")
+    @patch("incidents.tasks.urllib.request.build_opener")
+    def test_legacy_receiver_without_secret_remains_supported(self, opener):
+        opener.return_value.open.return_value.__enter__.return_value = MagicMock(status=200)
+        self.assertTrue(send_delivery(self.delivery.pk))
+        request = opener.return_value.open.call_args.args[0]
+        self.assertIsNone(request.get_header("X-triagedock-signature"))
+
+    def test_outbound_redirect_handler_refuses_new_destination(self):
+        from incidents.tasks import NoRedirect
+        handler = NoRedirect()
+        redirected = handler.redirect_request(
+            None, None, 302, "Found", {"Location": "https://other.example.test/"},
+            "https://other.example.test/"
+        )
+        self.assertIsNone(redirected)
