@@ -83,3 +83,51 @@ class SessionTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertFalse(json.loads(response.content)["can_manage_incidents"])
+
+    @override_settings(CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}})
+    def test_successful_logins_do_not_consume_failed_attempt_quota(self):
+        cache.clear()
+        self.client.get(reverse("session"))
+        for _ in range(6):
+            token = self.client.cookies["csrftoken"].value
+            response = self.client.post(
+                reverse("login"),
+                data=json.dumps({"username": "operator", "password": "strong-test-password"}),
+                content_type="application/json", HTTP_X_CSRFTOKEN=token,
+            )
+            self.assertEqual(response.status_code, 200)
+
+    @override_settings(CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}})
+    def test_successful_login_does_not_erase_ip_failure_budget(self):
+        cache.clear()
+        self.client.get(reverse("session"))
+        for _ in range(4):
+            response = self.client.post(
+                reverse("login"),
+                data=json.dumps({"username": "operator", "password": "wrong"}),
+                content_type="application/json",
+                HTTP_X_CSRFTOKEN=self.client.cookies["csrftoken"].value,
+            )
+            self.assertEqual(response.status_code, 401)
+        # One legitimate login should not reset the address-wide failure window.
+        valid = self.client.post(
+            reverse("login"),
+            data=json.dumps({"username": "operator", "password": "strong-test-password"}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=self.client.cookies["csrftoken"].value,
+        )
+        self.assertEqual(valid.status_code, 200)
+        wrong = self.client.post(
+            reverse("login"),
+            data=json.dumps({"username": "operator", "password": "wrong"}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=self.client.cookies["csrftoken"].value,
+        )
+        self.assertEqual(wrong.status_code, 401)
+        locked = self.client.post(
+            reverse("login"),
+            data=json.dumps({"username": "operator", "password": "strong-test-password"}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=self.client.cookies["csrftoken"].value,
+        )
+        self.assertEqual(locked.status_code, 429)

@@ -139,7 +139,11 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [detail, setDetail] = useState<IncidentDetail | null>(null);
-  const closeDetail = useCallback(() => setDetail(null), []);
+  const detailRequestVersion = useRef(0);
+  const closeDetail = useCallback(() => {
+    detailRequestVersion.current += 1;
+    setDetail(null);
+  }, []);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -177,20 +181,29 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
   }, []);
 
   async function openIncident(incident: Incident) {
+    const requestId = ++detailRequestVersion.current;
     setError("");
-    try { setDetail(await api.detail(incident.id)); }
-    catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to open incident."); }
+    try {
+      const response = await api.detail(incident.id);
+      if (requestId === detailRequestVersion.current) setDetail(response);
+    } catch (reason) {
+      if (requestId === detailRequestVersion.current)
+        setError(reason instanceof Error ? reason.message : "Unable to open incident.");
+    }
   }
 
   async function action(name: "acknowledge" | "resolve") {
-    if (!detail) return;
+    if (!detail || busy || !session.can_manage_incidents) return;
+    const requestId = detailRequestVersion.current;
     setBusy(true);
     setError("");
     try {
-      setDetail(await api.action(detail.id, name));
+      const response = await api.action(detail.id, name);
+      if (requestId === detailRequestVersion.current) setDetail(response);
       setReload(value => value + 1);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Action failed.");
+      if (requestId === detailRequestVersion.current)
+        setError(reason instanceof Error ? reason.message : "Action failed.");
     } finally {
       setBusy(false);
     }
