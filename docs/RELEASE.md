@@ -10,7 +10,7 @@ For a release, require independently recorded success on the **exact release can
 - Intake rejects requests without an API key; first accepted alert returns 201; repeated identity returns 200 and increments occurrences; resolved incidents reopen.
 - Notification records persist, bounded retry failures remain visible, and the receiver may see duplicates.
 - Local `.env` remains uncommitted; web port binds to loopback; no database or Redis host ports.
-- The README screenshot was captured and visually reviewed from the running application with synthetic demo incidents; browser CI repeats the interaction path on changes.
+- The README screenshot was captured and visually reviewed from the v1.0.0 application with synthetic demo incidents. The manually triggered browser workflow can repeat that path; it has not established results for the newer hardening source.
 - External deployment is out of scope; performance at production incident volume and external alert rates is not established.
 
 ## GitHub administration

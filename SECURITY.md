@@ -15,7 +15,7 @@ If you discover a security issue, use GitHub's **Report a vulnerability** option
 
 ## Dependency maintenance
 
-The committed npm and Python locks fix dependency resolution for reviewed builds. Dependabot submits updates; update both the direct input and the corresponding lock before merging. CI rejects install errors and audits available vulnerability advisories. An audit result is a point-in-time check, not an assurance that no vulnerabilities exist.
+The committed npm and Python locks fix dependency resolution for reviewed builds. Dependabot submits updates; update both the direct input and the corresponding lock before merging. The workflow is configured to reject install errors and audit available vulnerability advisories when run. An audit result is a point-in-time check, not an assurance that no vulnerabilities exist.
 
 ## Evidence boundaries
 

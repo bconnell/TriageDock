@@ -88,3 +88,15 @@ class DeliveryTests(TransactionTestCase):
         self.delivery.refresh_from_db()
         self.assertEqual(self.delivery.status, "failed")
         self.assertEqual(self.delivery.attempts, 3)
+
+    @patch("incidents.tasks.urllib.request.build_opener")
+    def test_dispatch_batch_is_bounded_without_losing_due_rows(self, opener):
+        opener.return_value.open.return_value.__enter__.return_value = MagicMock(status=204)
+        for key in ("host-2", "host-3"):
+            ingest_alert({**ALERT, "external_key": key})
+        self.assertEqual(NotificationDelivery.objects.count(), 3)
+        self.assertEqual(process_due_deliveries(), 2)
+        self.assertEqual(NotificationDelivery.objects.filter(status="sent").count(), 2)
+        self.assertEqual(NotificationDelivery.objects.filter(status="pending").count(), 1)
+        self.assertEqual(process_due_deliveries(), 1)
+        self.assertEqual(NotificationDelivery.objects.filter(status="sent").count(), 3)

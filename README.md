@@ -68,7 +68,7 @@ On Windows PowerShell, set `$env:INGEST_API_KEY` to the same value stored in you
 
 ### Optional HTTPS notification delivery
 
-Set `NOTIFICATION_WEBHOOK_URL` to an HTTPS endpoint you control and restart the Compose services. A newly created or reopened incident adds a notification record to PostgreSQL. Celery beat checks for pending deliveries every 15 seconds. The worker attempts an HTTP POST with a five second timeout and retries after 30 and 60 seconds, up to three attempts. The incident detail view shows delivery attempts and failures. A short database claim can be recovered after a worker crash; an immutable notification payload is recorded when the event is created. Leave the URL empty to disable notifications. Delivery is not guaranteed; receivers must deduplicate repeated requests using `event_id`.
+Set `NOTIFICATION_WEBHOOK_URL` to an HTTPS endpoint you control and restart the Compose services. A newly created or reopened incident adds a notification record to PostgreSQL. Celery beat checks for pending deliveries every 15 seconds. The worker attempts an HTTP POST with a five second timeout and retries after 30 and 60 seconds, up to three attempts. It handles at most two due deliveries every 15 seconds to bound queued work when receivers are slow. The incident detail view shows delivery attempts and failures. A short database claim can be recovered after a worker crash; a notification payload snapshot is recorded when the event is created. Leave the URL empty to disable notifications. Delivery is not guaranteed; receivers must deduplicate repeated requests using `event_id`.
 
 ## Local developer workflow
 
@@ -105,7 +105,7 @@ The PostgreSQL volume retains incidents across `docker compose down`. Use `.\scr
 - Frontend: from `frontend/`, run `npm ci` and `npm run dev`. Vite proxies `/api` to the Django server. Open **http://127.0.0.1:5173**.
 - Backend checks: `python manage.py check`, `python manage.py makemigrations --check --dry-run`, `python manage.py test incidents`.
 - Frontend checks: `npm run typecheck`, `npm test`, `npm run build`.
-- CI runs PostgreSQL-backed Django tests, TypeScript tests and compilation, dependency vulnerability audits, a production Docker build, and a live Compose HTTP smoke test. Python and npm dependency versions are recorded in committed lockfiles.
+- The manually triggered CI workflow defines PostgreSQL-backed Django tests, frontend checks, dependency vulnerability audits, a production Docker build and a Compose HTTP/browser smoke test. The current hardening source has not passed those hosted checks. Python and npm dependency versions are recorded in committed lockfiles.
 
 ## Architecture
 
@@ -138,7 +138,7 @@ Framework references: [Django authentication](https://docs.djangoproject.com/en/
 
 - The default deployment is **local-only**. A public deployment needs managed TLS termination, secure cookies (`SECURE_COOKIES=1`), suitable `ALLOWED_HOSTS` and trusted origins, network edge rate limiting, secret management, monitoring, backups, and restore exercises.
 - All authenticated Django users can read incidents. Only granted operators can change incident status. There are no per-incident permissions, tenant separation, SSO, escalation policies, SMS, or email paging.
-- Notification delivery is best effort, with up to three attempts per event. An event can be delivered more than once, and a successful delivery is not guaranteed. The dispatcher processes at most 8 due rows per run; it is not designed for high-volume paging.
+- Notification delivery is best effort, with up to three attempts per event. An event can be delivered more than once, and a successful delivery is not guaranteed. The dispatcher processes at most 2 due rows per run; it is not designed for high-volume paging.
 - The frontend polls every 30 seconds; no WebSocket or instant push is claimed.
 - A small liveness endpoint does not prove database or queue readiness.
 - No credentials, customer data, or real alert endpoints should be committed to this repository.

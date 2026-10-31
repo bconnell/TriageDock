@@ -43,7 +43,7 @@ Delivery payload (only when `NOTIFICATION_WEBHOOK_URL` is configured):
   "status": "open"
 }
 ```
-Consumers **must deduplicate by `event_id`**. A worker can successfully deliver a notification and crash before the database commits its success, resulting in a repeated HTTP delivery. The `status` value reflects the incident when the worker sends the request, which may be different from the status when the event was recorded.
+Consumers **must deduplicate by `event_id`**. A worker can successfully deliver a notification and crash before the database commits its success, resulting in a repeated HTTP delivery. The `status`, `severity`, and `title` values are snapshotted when the event is recorded. The incident may have changed by the time the worker sends the request.
 
 ### Operator authorization and abuse handling
 
