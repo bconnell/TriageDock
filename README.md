@@ -128,6 +128,7 @@ Authentication and CSRF are provided by Django. No public account registration e
 - [API endpoints and authentication](docs/API.md)
 - [Development scope and verification](docs/GOAL_AND_LOOP.md)
 - [Release acceptance and GitHub settings](docs/RELEASE.md)
+- [Verification evidence and outstanding acceptance](docs/EVIDENCE.md)
 - [Security policy](SECURITY.md)
 - [First release notes](docs/RELEASE_NOTES.md)
 - [Contributing](CONTRIBUTING.md)
