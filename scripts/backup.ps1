@@ -24,11 +24,19 @@ try {
     # NOT establish successful restoration or completeness of the source data.
     docker compose exec -T db pg_restore --list $containerPath | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "pg_restore could not read the archive manifest" }
+    $sourceHashLine = [string](docker compose exec -T db sha256sum $containerPath)
+    if ($LASTEXITCODE -ne 0 -or $sourceHashLine -notmatch '^(?<digest>[a-fA-F0-9]{64})') {
+        throw "Cannot establish container archive checksum; backup not finalized"
+    }
+    $sourceDigest = $Matches["digest"].ToUpperInvariant()
     docker compose cp "db:$containerPath" $partial
     if ($LASTEXITCODE -ne 0) { throw "Backup copy failed; incomplete file retained for inspection" }
     if ((Get-Item $partial).Length -lt 100) { throw "Backup copy unexpectedly small; not finalized" }
+    $digest = (Get-FileHash -LiteralPath $partial -Algorithm SHA256).Hash
+    if ($digest -ne $sourceDigest) {
+        throw "Host archive does not match container checksum; partial file retained"
+    }
     Move-Item -LiteralPath $partial -Destination $target -ErrorAction Stop
-    $digest = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash
     Write-Host "Backup copied: $target"
     Write-Host "SHA256: $digest"
     Write-Host "Unverified until restored into an isolated database and inspected."
