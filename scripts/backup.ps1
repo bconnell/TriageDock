@@ -25,10 +25,14 @@ try {
     docker compose exec -T db pg_restore --list $containerPath | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "pg_restore could not read the archive manifest" }
     $sourceHashLine = [string](docker compose exec -T db sha256sum $containerPath)
-    if ($LASTEXITCODE -ne 0 -or $sourceHashLine -notmatch '^(?<digest>[a-fA-F0-9]{64})') {
-        throw "Cannot establish container archive checksum; backup not finalized"
+    if ($LASTEXITCODE -ne 0) {
+        throw "Cannot compute container archive checksum; backup not finalized"
     }
-    $sourceDigest = $Matches["digest"].ToUpperInvariant()
+    $hashMatch = [regex]::Match($sourceHashLine, '^[a-fA-F0-9]{64}(?=\s)')
+    if (-not $hashMatch.Success) {
+        throw "Invalid checksum output from container; backup not finalized"
+    }
+    $sourceDigest = $hashMatch.Value.ToUpperInvariant()
     docker compose cp "db:$containerPath" $partial
     if ($LASTEXITCODE -ne 0) { throw "Backup copy failed; incomplete file retained for inspection" }
     if ((Get-Item $partial).Length -lt 100) { throw "Backup copy unexpectedly small; not finalized" }
