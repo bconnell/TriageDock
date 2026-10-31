@@ -10,7 +10,7 @@ If you discover a security issue, use GitHub's **Report a vulnerability** option
 - External deployments require HTTPS, secure cookies, approved hosts and trusted origins, edge rate limiting, database backup/restore, and a dedicated secret manager.
 - Readers can inspect incidents; only users granted `incidents.change_incident` can acknowledge or resolve. There is no per-incident authorization or multi-tenant isolation.
 - The alert API uses a bearer-style API key in `X-TriageDock-Key`. It is **not** a cryptographic signature. A Redis-backed application throttle provides bounded abuse protection, not network-edge DDoS protection. Source-scoped keys can be revoked, and the legacy shared key can be disabled with `INGEST_SHARED_KEY_ENABLED=0`. In that mode no legacy shared key is required; source-scoped keys are managed through Django commands.
-- Outgoing HTTPS webhooks are optional. Delivery is best effort with bounded retries and possible duplicates; receivers must deduplicate `event_id`.
+- Outgoing HTTPS webhooks are optional. Delivery is best effort with bounded retries and possible duplicates; receivers must deduplicate `event_id`. For message authenticity, configure an independent `NOTIFICATION_WEBHOOK_SECRET` and verify the signed timestamp and exact raw JSON bytes at the receiver. Unsigned legacy delivery remains available, but has no authenticated payload guarantee.
 - The `/health/` endpoint is a liveness response, not proof of database, Redis, or worker health.
 
 ## Dependency maintenance

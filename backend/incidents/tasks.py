@@ -4,8 +4,11 @@ Claiming does not keep the database locked during HTTP delivery. Completion uses
 an opaque claim token so a timed-out worker cannot overwrite a later claim.
 Receivers must deduplicate by event_id because network delivery is at-most-unknown.
 """
+import hashlib
+import hmac
 import json
 import logging
+import time
 import uuid
 import urllib.request
 from datetime import timedelta
@@ -64,10 +67,20 @@ def send_delivery(delivery_id: int) -> bool:
         payload = delivery.payload
 
     # Network I/O happens after the claim transaction has committed.
+    body = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    headers = {"Content-Type": "application/json", "User-Agent": "TriageDock"}
+    secret = settings.NOTIFICATION_WEBHOOK_SECRET
+    if secret:
+        timestamp = str(int(time.time()))
+        digest = hmac.new(secret.encode("utf-8"),
+                          timestamp.encode("ascii") + b"." + body,
+                          hashlib.sha256).hexdigest()
+        headers["X-TriageDock-Timestamp"] = timestamp
+        headers["X-TriageDock-Signature"] = "sha256=" + digest
     request = urllib.request.Request(
         settings.NOTIFICATION_WEBHOOK_URL,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json", "User-Agent": "TriageDock"},
+        data=body,
+        headers=headers,
         method="POST",
     )
     ok = False
