@@ -112,7 +112,7 @@ function DetailPane({ data, onClose, onAction, busy, canManage }: {
       {!canManage && <p className="muted small" role="status">Read-only access. Incident changes require operator permission.</p>}
       <div className="detail-section">
         <div className="section-label">ACTIVITY HISTORY</div>
-        {data.events_has_more && <p className="muted small" role="status">Showing the 50 most recent events. Older history is available through the paginated incident events API.</p>}
+        {data.events_has_more && <p className="muted small" role="status">Showing the 50 most recent events. <a href={`/api/v1/incidents/${encodeURIComponent(data.id)}/events/`} target="_blank" rel="noopener noreferrer">Open the paginated history</a>.</p>}
         <div className="timeline">
           {data.events.map(event => <div className="timeline-entry" key={event.id}>
             <div className="timeline-dot"/>
@@ -229,7 +229,7 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
       </div>
     </aside>
     <main className="main">
-      <header className="topbar"><div className="breadcrumb">Workspace <ChevronRight size={14}/> <strong>Overview</strong></div><div className="top-actions"><span className="live"><RefreshCw size={13}/> 30 SECOND REFRESH</span><span className="top-divider"/><span className="user-label">{session.username}</span></div></header>
+      <header className="topbar"><div className="breadcrumb">Workspace <ChevronRight size={14}/> <strong>Overview</strong></div><div className="top-actions"><span className="live"><RefreshCw size={13}/> 30 SECOND REFRESH</span><span className="top-divider"/><span className="user-label">{session.username}</span><button className="icon-button top-logout" aria-label="Sign out" title="Sign out" onClick={() => void logout()}><LogOut size={18}/></button></div></header>
       <div className="content">
         <div className="page-intro"><div><div className="eyebrow"><span className="eyebrow-line"/> INCIDENT REVIEW</div><h1>Incident dashboard<span className="heading-period">.</span></h1><p>Review incoming alerts, update their status, and inspect activity history.</p></div><button className="button button-secondary refresh" onClick={() => setReload(value => value + 1)} disabled={loading}><RefreshCw size={16} className={loading ? "spin" : ""}/> Refresh data</button></div>
         {error && <div role="alert" className="error-banner"><AlertCircle size={18}/><span>{error}</span><button aria-label="Dismiss error" onClick={() => setError("")}><X size={15}/></button></div>}

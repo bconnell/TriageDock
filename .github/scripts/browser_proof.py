@@ -66,7 +66,12 @@ def main():
         driver.find_element(By.XPATH, '//button[contains(text(),"Resolve incident")]').click()
         wait.until(EC.text_to_be_present_in_element((By.CSS_SELECTOR, ".detail-pane .pills"), "Resolved"))
         assert len(driver.find_elements(By.CSS_SELECTOR, ".detail-actions")) == 0
-        print("Real browser login, list, detail, acknowledge, and resolve passed", flush=True)
+        driver.find_element(By.CSS_SELECTOR, '[aria-label="Close incident details"]').click()
+        for width in (800, 375):
+            driver.set_window_size(width, 850)
+            logout_button = driver.find_element(By.CSS_SELECTOR, ".top-logout")
+            assert logout_button.is_displayed(), f"Sign-out control missing at width {width}"
+        print("Real browser login, list, detail, acknowledge, resolve and responsive sign-out passed", flush=True)
         print("Screenshot:", IMAGE.as_posix(), IMAGE.stat().st_size, "bytes", flush=True)
     finally:
         driver.quit()
