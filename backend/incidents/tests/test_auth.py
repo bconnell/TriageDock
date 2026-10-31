@@ -131,3 +131,41 @@ class SessionTests(TestCase):
             HTTP_X_CSRFTOKEN=self.client.cookies["csrftoken"].value,
         )
         self.assertEqual(locked.status_code, 429)
+
+    @override_settings(CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}})
+    def test_authenticated_incident_mutation_requires_csrf(self):
+        from django.contrib.auth.models import Permission
+        from incidents.models import Incident
+        from incidents.services import ingest_alert
+
+        cache.clear()
+        incident, _ = ingest_alert({
+            "source": "csrf-probe", "external_key": "incident-1",
+            "title": "CSRF check", "severity": "high",
+        })
+        permission = Permission.objects.get(
+            content_type__app_label="incidents", codename="change_incident"
+        )
+        self.user.user_permissions.add(permission)
+        self.client.get(reverse("session"))
+        login_response = self.client.post(
+            reverse("login"),
+            data=json.dumps({"username": "operator", "password": "strong-test-password"}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=self.client.cookies["csrftoken"].value,
+        )
+        self.assertEqual(login_response.status_code, 200)
+        action_url = reverse(
+            "incident-action", kwargs={"pk": incident.pk, "action": "acknowledge"}
+        )
+        without_csrf = self.client.post(action_url, content_type="application/json")
+        self.assertEqual(without_csrf.status_code, 403)
+        incident.refresh_from_db()
+        self.assertEqual(incident.status, Incident.Status.OPEN)
+        with_csrf = self.client.post(
+            action_url, content_type="application/json",
+            HTTP_X_CSRFTOKEN=self.client.cookies["csrftoken"].value,
+        )
+        self.assertEqual(with_csrf.status_code, 200)
+        incident.refresh_from_db()
+        self.assertEqual(incident.status, Incident.Status.ACKNOWLEDGED)

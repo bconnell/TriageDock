@@ -127,3 +127,12 @@ class DeliveryTests(TransactionTestCase):
         self.assertTrue(send_delivery(self.delivery.pk))
         request = opener.return_value.open.call_args.args[0]
         self.assertIsNone(request.get_header("X-triagedock-signature"))
+
+    def test_outbound_redirect_handler_refuses_new_destination(self):
+        from incidents.tasks import NoRedirect
+        handler = NoRedirect()
+        redirected = handler.redirect_request(
+            None, None, 302, "Found", {"Location": "https://other.example.test/"},
+            "https://other.example.test/"
+        )
+        self.assertIsNone(redirected)
