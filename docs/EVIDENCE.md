@@ -10,17 +10,19 @@ Those results are **not evidence for any newer commit**.
 
 ## Current source after v1.0.0
 
-The post-release hardening branch adds code and regression tests for:
+The post-release source contains implementations and regression test cases for:
 
 - Reader/operator authorization and login abuse limits, including legitimate
   repeated login and shared-address failure accounting.
 - Source-scoped ingest credentials, bounded history, and PostgreSQL
   simultaneous-ingest probes.
-- Outbox claim recovery, bounded dispatch batches, event-time payload snapshots,
-  signed-webhook support, and simultaneous delivery-claim probes.
-- Accessible incident details, race-safe detail selection, and small-screen
-  sign-out controls.
-- Backup staging, archive inspection, isolated restore startup, and resource
+- Outbox claim recovery, a two-delivery dispatch budget, event-time payload
+  snapshots, optional HMAC-signed webhooks, refusal to follow redirects,
+  and simultaneous delivery-claim probes.
+- Accessible incident details, race-safe detail selection, session expiry
+  handling, and a keyboard-accessible sign-out control down to a 320px viewport.
+- Guarded 64 KiB alert bodies, real-session CSRF negative tests, backup
+  staging and checksum comparison, isolated restore startup, and resource
   preflight scripts.
 
 **Execution status for post-release source:** Backend tests, migration checks,
