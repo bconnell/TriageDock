@@ -35,8 +35,8 @@ jobs:
       REDIS_CACHE_URL: redis://localhost:6379/1
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,testserver
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - run: python scripts/check_public_copy.py
@@ -50,8 +50,8 @@ jobs:
   frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
       - working-directory: frontend
@@ -63,7 +63,7 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: docker build -f backend/Dockerfile -t triagedock:ci .
       - name: Boot Compose and verify real HTTP / PostgreSQL integration
         env:
@@ -87,7 +87,7 @@ jobs:
           python .github/scripts/browser_proof.py
       - name: Retain browser screenshot for failed-run diagnosis
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dashboard-proof
           path: docs/screenshots/dashboard.webp
@@ -110,11 +110,11 @@ jobs:
   security:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - name: Audit locked frontend production dependencies
